@@ -61,6 +61,48 @@ try {
             return `${Math.floor(seconds / 86400)} days ago`;
         };
         
+        // Show toast notification
+        const showToast = (message, type = 'info') => {
+            // Create toast container if it doesn't exist
+            let toastContainer = document.getElementById('toast-container');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'toast-container';
+                toastContainer.className = 'fixed bottom-4 right-4 z-50 flex flex-col gap-2';
+                document.body.appendChild(toastContainer);
+            }
+            
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = `p-3 rounded shadow-lg text-white flex items-center justify-between ${
+                type === 'success' ? 'bg-green-600' : 
+                type === 'error' ? 'bg-red-600' : 
+                'bg-blue-600'
+            }`;
+            
+            toast.innerHTML = `
+                <span>${message}</span>
+                <button class="ml-3 text-white hover:text-gray-200">&times;</button>
+            `;
+            
+            // Add to container
+            toastContainer.appendChild(toast);
+            
+            // Auto-remove after 3 seconds
+            const timeout = setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 3000);
+            
+            // Close button
+            const closeBtn = toast.querySelector('button');
+            closeBtn.addEventListener('click', () => {
+                clearTimeout(timeout);
+                toast.remove();
+            });
+        };
+        
         // Render active games
         const renderGames = async () => {
             wagersContainer.innerHTML = '';
@@ -135,10 +177,47 @@ try {
         // Load active games from Supabase
         const loadActiveGames = async () => {
             try {
-                wagersContainer.innerHTML = '<p class="text-gray-300">Loading available wagers...</p>';
+                // For polling updates, we'll check if the list has changed before showing the refresh indicator
+                const isPoll = !wagersContainer.innerHTML.includes('Refreshing');
+                
+                // Only show the refreshing indicator if this is not a background poll or if container is empty
+                if (!isPoll || activeGames.length === 0) {
+                    wagersContainer.innerHTML = '<p class="text-cyan-400 animate-pulse">Refreshing wagers list...</p>';
+                    
+                    // Small delay to ensure the refreshing message is visible
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
+                
                 const games = await getActiveGames();
-                activeGames = games;
-                await renderGames();
+                
+                // Check if the games list has actually changed before updating the UI
+                const hasChanged = isPoll && (
+                    // Different number of games
+                    activeGames.length !== games.length ||
+                    // Or different game IDs
+                    JSON.stringify(activeGames.map(g => g.id).sort()) !== 
+                    JSON.stringify(games.map(g => g.id).sort())
+                );
+                
+                // Only update the UI if this is not a poll or if data has changed
+                if (!isPoll || hasChanged) {
+                    console.log('Games list changed, updating UI');
+                    activeGames = games;
+                    await renderGames();
+                    
+                    // Only add the flash effect if there was an actual change
+                    if (hasChanged) {
+                        // Add a subtle flash effect to the container to highlight the update
+                        wagersContainer.classList.add('bg-cyan-900', 'bg-opacity-10');
+                        setTimeout(() => {
+                            wagersContainer.classList.remove('bg-cyan-900', 'bg-opacity-10');
+                        }, 500);
+                    }
+                } else if (isPoll) {
+                    // Silent update of the data if polling didn't detect changes
+                    activeGames = games;
+                    console.log('Polling detected no changes in games list');
+                }
             } catch (error) {
                 console.error('Failed to load active games:', error);
                 wagersContainer.innerHTML = '<p class="text-red-400">Error loading wagers. Please try again later.</p>';
@@ -154,6 +233,62 @@ try {
             } else {
                 userBalanceDisplay.textContent = '₿ 0';
             }
+        };
+        
+        // Set up real-time subscription for game updates
+        const setupRealTimeUpdates = async () => {
+            // Get current user to check for creator role
+            const currentUser = await getCurrentUser();
+            
+            // Track if this is the initial subscription to avoid duplicates
+            let isInitialUpdate = true;
+            
+            const subscription = subscribeToActiveGames(async payload => {
+                console.log('Realtime update received:', payload);
+                
+                // Skip the initial automatic updates from subscription setup
+                if (isInitialUpdate) {
+                    isInitialUpdate = false;
+                    console.log('Ignoring initial subscription update');
+                    return;
+                }
+                
+                // Handle different events
+                if (payload.eventType === 'INSERT') {
+                    // New game created - reload games
+                    console.log('New game created, refreshing list');
+                    await loadActiveGames();
+                } else if (payload.eventType === 'DELETE') {
+                    // Game removed - reload games
+                    console.log('Game removed, refreshing list');
+                    await loadActiveGames();
+                } else if (payload.eventType === 'UPDATE') {
+                    // Game was updated - always refresh the list
+                    console.log('Game updated, refreshing list');
+                    await loadActiveGames();
+                    
+                    // Additional specific handling for completed games
+                    if (payload.new && payload.new.status === 'completed') {
+                        // Show coinflip to game creator if that's the current user
+                        if (currentUser && payload.new.player1_id === currentUser.id) {
+                            console.log('Your game was joined and completed!');
+                            
+                            // Show coinflip animation for the creator
+                            const isWinner = payload.new.winner_id === currentUser.id;
+                            showCoinflip(isWinner);
+                            
+                            // Update balance since there's a change
+                            updateBalanceDisplay();
+                        }
+                    }
+                } else if (payload.eventType === 'REFRESH') {
+                    // Manual refresh triggered
+                    console.log('Manual refresh triggered');
+                    await loadActiveGames();
+                }
+            });
+            
+            return subscription;
         };
         
         // Handle join game
@@ -192,9 +327,12 @@ try {
                 // Update balance
                 updateBalanceDisplay();
                 
-                // Remove game from list
-                activeGames = activeGames.filter(g => g.id !== gameId);
-                await renderGames();
+                // Show a success message
+                showToast('Game joined! Refreshing list...', 'success');
+                
+                // Manually update the game list since real-time events may not be reliable
+                await loadActiveGames();
+                
             } catch (error) {
                 console.error('Error joining game:', error);
                 alert('An unexpected error occurred. Please try again later.');
@@ -237,6 +375,13 @@ try {
                 
                 // Clear input
                 wagerAmountInput.value = '';
+                
+                // Show a success message
+                showToast('Game created! Refreshing list...', 'success');
+                
+                // Manually update the game list since real-time events may not be reliable
+                await loadActiveGames();
+                
             } catch (error) {
                 console.error('Error creating game:', error);
                 alert('Error creating game: ' + error.message);
@@ -291,57 +436,6 @@ try {
             coinInner.style.transform = '';
         };
         
-        // Set up real-time subscription for game updates
-        const setupRealTimeUpdates = async () => {
-            // Get current user to check for creator role
-            const currentUser = await getCurrentUser();
-            
-            // Track if this is the initial subscription to avoid duplicates
-            let isInitialUpdate = true;
-            
-            const subscription = subscribeToActiveGames(async payload => {
-                console.log('Realtime update received:', payload);
-                
-                // Skip the initial automatic updates from subscription setup
-                if (isInitialUpdate) {
-                    isInitialUpdate = false;
-                    console.log('Ignoring initial subscription update');
-                    return;
-                }
-                
-                // Handle different events
-                if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
-                    // Game created or removed - reload games
-                    console.log('Game created or removed, refreshing list');
-                    await loadActiveGames();
-                } else if (payload.eventType === 'UPDATE') {
-                    if (payload.new && payload.new.status === 'completed') {
-                        // Game completed
-                        console.log('Game completed, refreshing list');
-                        await loadActiveGames();
-                        
-                        // Show coinflip to game creator if that's the current user
-                        if (currentUser && payload.new.player1_id === currentUser.id) {
-                            console.log('Your game was joined and completed!');
-                            
-                            // Show coinflip animation for the creator
-                            const isWinner = payload.new.winner_id === currentUser.id;
-                            showCoinflip(isWinner);
-                            
-                            // Update balance since there's a change
-                            updateBalanceDisplay();
-                        }
-                    }
-                } else if (payload.eventType === 'REFRESH') {
-                    // Manual refresh triggered
-                    console.log('Manual refresh triggered');
-                    await loadActiveGames();
-                }
-            });
-            
-            return subscription;
-        };
-        
         // Handle cancel game
         const handleCancelGame = async (e) => {
             const user = await getCurrentUser();
@@ -370,19 +464,11 @@ try {
                 
                 console.log(`Game successfully cancelled: ${gameId}`);
                 
-                // Only remove from UI if deletion was successful
-                const gameElement = e.target.closest('.bg-gray-800');
-                if (gameElement) {
-                    gameElement.remove();
-                }
+                // Show a success message
+                showToast('Game successfully cancelled! Refreshing list...', 'success');
                 
-                // Only update array if deletion was successful
-                activeGames = activeGames.filter(g => g.id !== gameId);
-                
-                // If no games left, show the empty state
-                if (activeGames.length === 0) {
-                    wagersContainer.innerHTML = '<p class="text-gray-400">No active wagers available. Create one!</p>';
-                }
+                // Manually update the game list since real-time events may not be reliable for DELETE operations
+                await loadActiveGames();
                 
             } catch (error) {
                 console.error('Error cancelling game:', error);
@@ -431,12 +517,20 @@ try {
                 // Set up real-time updates
                 const subscription = await setupRealTimeUpdates();
                 
+                // Set up periodic polling as a backup for real-time updates
+                // Refresh the list every 5 seconds to ensure all clients stay in sync
+                const pollingInterval = setInterval(() => {
+                    console.log('Polling for game updates...');
+                    loadActiveGames();
+                }, 5000);
+                
                 // Clean up on page unload
                 window.addEventListener('beforeunload', () => {
-                    console.log('Cleaning up subscriptions');
+                    console.log('Cleaning up subscriptions and intervals');
                     if (subscription && typeof subscription === 'object' && subscription.unsubscribe) {
                         subscription.unsubscribe();
                     }
+                    clearInterval(pollingInterval);
                 });
                 
                 // Update balance if user is logged in

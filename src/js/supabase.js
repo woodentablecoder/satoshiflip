@@ -433,11 +433,19 @@ export function subscribeToActiveGames(callback) {
         }, 
         payload => {
           console.log('Game update received:', payload);
+          console.log('Game update type:', payload.eventType);
+          console.log('Game update data:', payload.new || payload.old);
           callback(payload);
         })
     .subscribe(status => {
       console.log('Realtime subscription status:', status);
-      // Don't trigger a manual refresh on initial subscription
+      
+      // Log more detailed subscription status information
+      if (status === 'SUBSCRIBED') {
+        console.log('Successfully subscribed to real-time updates for games table');
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error('Error subscribing to games table updates');
+      }
     });
     
   return channel;
