@@ -31,3 +31,5 @@ Thumbs.db
 
 # Files
 sql-tips.txt
+update_balance.sql
+update_cancel_game.sql
