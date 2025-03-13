@@ -1,0 +1,300 @@
+## How to start site
+- python3 -m http.server
+
+Here's a detailed specification for your Bitcoin coinflip game:
+
+# Bitcoin Coinflip Game Specification
+
+## Description
+A coinflip game where 2 users do a 50/50 coinflip to determine who wins the deposited bitcoin in the pot, by guessing either orange or gray correctly.
+The UX for players on the website would be, on the homepage they see a list of active games which they can choose to bet and 20 seconds after each wager has concluded, 
+they would disappear from the game list. Only 2 players can join a wager.
+
+## Overview
+A web-based 2-player game where users can:
+- Deposit Bitcoin Via the Lightning Network & On chain(BTC) using https://www.blink.sv/en/api
+- Wager in a 50/50 coinflip
+- Winner takes all
+- Built with JavaScript, Tailwind CSS, and Supabase
+
+## Tech Stack
+- Frontend: JavaScript (Vanilla or React), Tailwind CSS
+- Backend/Database: Supabase
+- Bitcoin handling: Internal balance system with satoshi display
+- Target Browsers: Latest Chrome, Firefox, Safari
+
+## Display Format
+- Bitcoin amounts displayed in satoshis (8 decimal places)
+- Example: 1.00000000 BTC = ₿ 100 000 000 (1 BTC = ₿ 100 000 000)
+- Use ₿ symbol prefix followed by space separated number
+
+## Database Schema (Supabase)
+```sql
+-- Users table
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email TEXT UNIQUE NOT NULL,
+  btc_address TEXT UNIQUE NOT NULL,
+  balance BIGINT DEFAULT 0, -- Stored in satoshis
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Games table
+CREATE TABLE games (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  player1_id UUID REFERENCES users(id),
+  player2_id UUID REFERENCES users(id),
+  wager_amount BIGINT NOT NULL, -- In satoshis
+  status TEXT CHECK (status IN ('pending', 'active', 'completed')),
+  winner_id UUID REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT NOW(),
+  completed_at TIMESTAMP
+);
+
+-- Transactions table
+CREATE TABLE transactions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id),
+  amount BIGINT NOT NULL, -- In satoshis, negative for withdrawals
+  type TEXT CHECK (type IN ('deposit', 'withdrawal', 'wager', 'win')),
+  status TEXT CHECK (status IN ('pending', 'completed', 'failed')),
+  tx_hash TEXT, -- Blockchain transaction hash when applicable
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+## Frontend Components
+
+### 1. Header
+```html
+<nav class="fixed w-full bg-gray-800 text-white p-4">
+  <div class="container mx-auto flex justify-between">
+    <div>Coinflip</div>
+    <div>
+      <span id="user-balance">₿ 0</span>
+      <button class="ml-4 px-4 py-2 bg-blue-600">Deposit</button>
+      <button class="ml-2 px-4 py-2 bg-red-600">Withdraw</button>
+    </div>
+  </div>
+</nav>
+```
+
+### 2. Main Game Interface
+```html
+<div class="max-w-2xl mx-auto mt-20 p-6 bg-gray-100 rounded-lg">
+  <div class="text-center">
+    <h1 class="text-2xl mb-4">Bitcoin Coinflip</h1>
+    
+    <!-- Wager Input -->
+    <div class="mb-6">
+      <input 
+        type="number" 
+        id="wager-amount" 
+        class="border p-2 rounded"
+        placeholder="Enter amount in satoshis"
+      >
+      <span class="ml-2">₿</span>
+    </div>
+
+    <!-- Game Status -->
+    <div id="game-status" class="mb-6">
+      <p>Waiting for opponent...</p>
+      <div id="players" class="hidden">
+        <span id="player1">Player 1: You</span>
+        <span id="player2">Player 2: Waiting</span>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <button 
+      id="create-game" 
+      class="px-6 py-3 bg-green-600 text-white rounded"
+    >
+      Create Game
+    </button>
+    <button 
+      id="join-game" 
+      class="px-6 py-3 bg-blue-600 text-white rounded ml-2"
+    >
+      Join Random Game
+    </button>
+  </div>
+</div>
+```
+
+### 3. Modal for Coinflip Animation
+```html
+<div id="coinflip-modal" class="fixed inset-0 bg-black/50 hidden">
+  <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+    <div id="coin" class="w-32 h-32 animate-spin">
+      <!-- Coin animation here -->
+    </div>
+    <p id="result" class="text-center mt-4 text-white text-xl"></p>
+  </div>
+</div>
+```
+
+## JavaScript Functionality
+
+### Core Game Logic
+```javascript
+class CoinflipGame {
+  constructor(supabase) {
+    this.supabase = supabase;
+    this.user = null;
+  }
+
+  async init() {
+    // Authenticate user with Supabase
+    const { data: { user } } = await this.supabase.auth.getUser();
+    this.user = user;
+    await this.updateBalance();
+  }
+
+  async createGame(wagerAmount) {
+    // Convert to satoshis
+    const satoshis = parseInt(wagerAmount);
+    
+    // Check balance
+    if (satoshis > this.user.balance) {
+      throw new Error('Insufficient balance');
+    }
+
+    const { data, error } = await this.supabase
+      .from('games')
+      .insert({
+        player1_id: this.user.id,
+        wager_amount: satoshis,
+        status: 'pending'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async joinGame(gameId) {
+    const { data: game } = await this.supabase
+      .from('games')
+      .select('*')
+      .eq('id', gameId)
+      .eq('status', 'pending')
+      .single();
+
+    if (!game || game.player1_id === this.user.id) {
+      throw new Error('Cannot join this game');
+    }
+
+    // Update game status
+    await this.supabase
+      .from('games')
+      .update({
+        player2_id: this.user.id,
+        status: 'active'
+      })
+      .eq('id', gameId);
+
+    return this.executeCoinflip(game);
+  }
+
+  async executeCoinflip(game) {
+    // Simple 50/50 random
+    const result = Math.random() < 0.5 ? game.player1_id : game.player2_id;
+    
+    // Update balances
+    const winnerAmount = game.wager_amount * 2;
+    
+    await Promise.all([
+      this.supabase.rpc('update_balance', {
+        user_id: result,
+        amount: winnerAmount
+      }),
+      this.supabase
+        .from('games')
+        .update({
+          status: 'completed',
+          winner_id: result,
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', game.id)
+    ]);
+
+    return result;
+  }
+
+  async updateBalance() {
+    const { data } = await this.supabase
+      .from('users')
+      .select('balance')
+      .eq('id', this.user.id)
+      .single();
+    
+    document.getElementById('user-balance').textContent = 
+      `₿ ${data.balance.toLocaleString()}`;
+  }
+}
+
+// Supabase client setup
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const game = new CoinflipGame(supabase);
+
+// Event listeners
+document.getElementById('create-game').addEventListener('click', async () => {
+  const wager = document.getElementById('wager-amount').value;
+  await game.createGame(wager);
+});
+```
+
+### Supabase Functions
+```sql
+-- Function to update balance
+CREATE FUNCTION update_balance(user_id UUID, amount BIGINT)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE users 
+  SET balance = balance + amount
+  WHERE id = user_id;
+  
+  INSERT INTO transactions (user_id, amount, type, status)
+  VALUES (user_id, amount, 
+    CASE WHEN amount > 0 THEN 'win' ELSE 'wager' END,
+    'completed');
+END;
+$$ LANGUAGE plpgsql;
+```
+
+## Bitcoin Integration
+- Deposits:
+  - Generate unique BTC address per user
+  - Monitor deposits off-chain
+  - Credit satoshis to internal balance upon confirmation
+
+- Withdrawals:
+  - User requests withdrawal amount in satoshis
+  - Deduct from internal balance
+  - Process blockchain transaction
+  - Update transaction status when confirmed
+
+## Security Considerations
+1. Use Supabase authentication
+2. Validate all wager amounts
+3. Rate limiting on game creation/joining
+4. Secure WebSocket connections for real-time updates
+5. Input sanitization
+6. HTTPS enforcement
+
+## Features
+- Real-time game status updates via Supabase subscriptions
+- Transaction history page
+- Minimum wager: ₿ 100 (100 satoshis)
+- Maximum wager: ₿ 100 000 000 (1 BTC)
+- Game timeout: 5 minutes if no opponent joins
+
+## Styling (Tailwind)
+- Responsive design
+- Dark mode support
+- Clean, minimal UI
+- Animated coinflip sequence
+
+This spec provides a solid foundation for a Bitcoin coinflip game with internal balance tracking and blockchain integration only on withdrawals. The code examples use modern JavaScript and Tailwind classes for a responsive UI.
