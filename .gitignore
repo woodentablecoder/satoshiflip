@@ -29,7 +29,8 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Files
+# Files and Paths
 sql-tips.txt
 update_balance.sql
 update_cancel_game.sql
+public/fonts/

@@ -435,7 +435,16 @@ try {
                 const result = await createGame(user.id, wagerAmount);
                 
                 if (!result.success) {
-                    alert(result.error || 'Failed to create game');
+                    if (result.error.includes('one game at a time')) {
+                        // User already has an active game
+                        showToast('You can only have one active game at a time. Cancel your existing game to create a new one.', 'error');
+                    } else if (result.error.includes('Maximum number of active games')) {
+                        // System already has 10 active games
+                        showToast('Maximum number of active games reached (10). Please try again later or join an existing game.', 'error');
+                    } else {
+                        // Other errors
+                        alert(result.error || 'Failed to create game');
+                    }
                     return;
                 }
                 

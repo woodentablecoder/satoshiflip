@@ -192,6 +192,32 @@ export async function createGame(userId, wagerAmount) {
       return { success: false, error: 'Insufficient balance' };
     }
     
+    // Check if user already has an active game
+    const { data: existingGames, error: existingError } = await supabase
+      .from('games')
+      .select('id')
+      .eq('player1_id', userId)
+      .eq('status', 'pending')
+      .limit(1);
+    
+    if (existingError) throw existingError;
+    
+    if (existingGames && existingGames.length > 0) {
+      return { success: false, error: 'You can only create one game at a time' };
+    }
+    
+    // Check if there are already 10 active games in total
+    const { data: totalGames, error: countError } = await supabase
+      .from('games')
+      .select('id', { count: 'exact' })
+      .eq('status', 'pending');
+    
+    if (countError) throw countError;
+    
+    if (totalGames && totalGames.length >= 10) {
+      return { success: false, error: 'Maximum number of active games reached (10). Please try again later.' };
+    }
+    
     // Create game in transaction
     const { data, error } = await supabase.rpc('create_game', {
       user_id: userId,
@@ -223,7 +249,8 @@ export async function getActiveGames() {
           users!games_player1_id_fkey (email)
         `)
         .eq('status', 'pending')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(10); // Limit to 10 active games
       
       if (error) {
         throw error;
@@ -262,7 +289,8 @@ export async function getActiveGames() {
         .from('games')
         .select('id, wager_amount, created_at, player1_id')
         .eq('status', 'pending')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(10); // Limit to 10 active games
       
       if (error) {
         console.error('Error in fallback query:', error);
