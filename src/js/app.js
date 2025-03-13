@@ -320,18 +320,23 @@ try {
                     return;
                 }
                 
-                // Show coinflip animation
-                const isWinner = result.data.winner_id === user.id;
-                showCoinflip(isWinner);
-                
-                // Update balance
-                updateBalanceDisplay();
-                
-                // Show a success message
-                showToast('Game joined! Refreshing list...', 'success');
-                
-                // Manually update the game list since real-time events may not be reliable
-                await loadActiveGames();
+                // Only show coinflip animation if the join was successful
+                if (result.data && result.data.winner_id) {
+                    const isWinner = result.data.winner_id === user.id;
+                    showCoinflip(isWinner);
+                    
+                    // Update balance
+                    updateBalanceDisplay();
+                    
+                    // Show a success message
+                    showToast('Game joined! Refreshing list...', 'success');
+                    
+                    // Manually update the game list since real-time events may not be reliable
+                    await loadActiveGames();
+                } else {
+                    console.error('Incomplete result data:', result);
+                    alert('Something went wrong with the game. Please check your balance and try again.');
+                }
                 
             } catch (error) {
                 console.error('Error joining game:', error);

@@ -319,6 +319,10 @@ export async function joinGame(userId, gameId) {
       });
       
       if (error) throw error;
+      
+      // Dispatch balance update event after successful RPC call
+      window.dispatchEvent(new CustomEvent('balanceChanged'));
+      
       return { success: true, data };
     } catch (rpcError) {
       console.error('RPC join_game failed:', rpcError);
@@ -328,6 +332,26 @@ export async function joinGame(userId, gameId) {
         console.log('Detected ambiguous column error, implementing client-side fallback');
         
         // Fallback: Implement client-side coinflip logic
+        
+        // First, deduct the wager amount from player2's balance (joining player)
+        const { data: player2Data, error: player2QueryError } = await supabase
+          .from('users')
+          .select('balance')
+          .eq('id', userId)
+          .single();
+          
+        if (player2QueryError) throw player2QueryError;
+        
+        // Update player2's balance by deducting wager amount
+        const { error: player2BalanceError } = await supabase
+          .from('users')
+          .update({
+            balance: player2Data.balance - game.wager_amount
+          })
+          .eq('id', userId);
+        
+        if (player2BalanceError) throw player2BalanceError;
+        
         // 1. Update game status to 'active' and add player2_id
         const { error: updateError } = await supabase
           .from('games')
@@ -394,6 +418,9 @@ export async function joinGame(userId, gameId) {
             status: 'completed'
           }
         ]);
+        
+        // Dispatch balance update event after balance updates
+        window.dispatchEvent(new CustomEvent('balanceChanged'));
         
         return {
           success: true,
