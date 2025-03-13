@@ -28,3 +28,6 @@ Thumbs.db
 # Editor and IDE specific directories
 .vscode/
 .idea/
+
+# Files
+sql-tips.txt
