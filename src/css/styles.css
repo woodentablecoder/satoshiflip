@@ -98,3 +98,7 @@
         transform: translateX(-100%);
     }
 } 
+
+#refresh-games-btn { /* Refresh button */
+  background-color: #f5cc7a;
+}

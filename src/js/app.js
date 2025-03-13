@@ -107,10 +107,7 @@ try {
         const renderGames = async () => {
             wagersContainer.innerHTML = '';
             
-            if (activeGames.length === 0) {
-                wagersContainer.innerHTML = '<p class="text-gray-400">No active wagers available. Create one!</p>';
-                return;
-            }
+            
             
             // Get current user to identify their games
             const currentUser = await getCurrentUser();
@@ -180,13 +177,7 @@ try {
                 // For polling updates, we'll check if the list has changed before showing the refresh indicator
                 const isPoll = !wagersContainer.innerHTML.includes('Refreshing');
                 
-                // Only show the refreshing indicator if this is not a background poll or if container is empty
-                if (!isPoll || activeGames.length === 0) {
-                    wagersContainer.innerHTML = '<p class="text-cyan-400 animate-pulse">Refreshing wagers list...</p>';
-                    
-                    // Small delay to ensure the refreshing message is visible
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                }
+                
                 
                 const games = await getActiveGames();
                 
