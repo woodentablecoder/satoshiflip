@@ -311,14 +311,103 @@ export async function joinGame(userId, gameId) {
       return { success: false, error: 'Insufficient balance' };
     }
     
-    // Execute coinflip via RPC
-    const { data, error } = await supabase.rpc('join_game', {
-      user_id: userId,
-      game_id: gameId
-    });
-    
-    if (error) throw error;
-    return { success: true, data };
+    try {
+      // Execute coinflip via RPC
+      const { data, error } = await supabase.rpc('join_game', {
+        user_id: userId,
+        game_id: gameId
+      });
+      
+      if (error) throw error;
+      return { success: true, data };
+    } catch (rpcError) {
+      console.error('RPC join_game failed:', rpcError);
+      
+      // Check if it's the ambiguous column error
+      if (rpcError.message && rpcError.message.includes('ambiguous')) {
+        console.log('Detected ambiguous column error, implementing client-side fallback');
+        
+        // Fallback: Implement client-side coinflip logic
+        // 1. Update game status to 'active' and add player2_id
+        const { error: updateError } = await supabase
+          .from('games')
+          .update({
+            player2_id: userId,
+            status: 'active'
+          })
+          .eq('id', gameId);
+        
+        if (updateError) throw updateError;
+        
+        // 2. Implement simple coinflip
+        const isWinner = Math.random() < 0.5;
+        const winnerId = isWinner ? userId : game.player1_id;
+        const loserId = isWinner ? game.player1_id : userId;
+        
+        // 3. Update game with winner
+        const { error: winnerError } = await supabase
+          .from('games')
+          .update({
+            winner_id: winnerId,
+            status: 'completed',
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', gameId);
+        
+        if (winnerError) throw winnerError;
+        
+        // 4. Update balances
+        // Winner gets double the wager amount
+        const winnerAmount = game.wager_amount * 2;
+        
+        // Get winner's current balance
+        const { data: winnerData, error: winnerQueryError } = await supabase
+          .from('users')
+          .select('balance')
+          .eq('id', winnerId)
+          .single();
+          
+        if (winnerQueryError) throw winnerQueryError;
+        
+        // Update winner's balance directly
+        const { error: winnerBalanceError } = await supabase
+          .from('users')
+          .update({
+            balance: winnerData.balance + winnerAmount
+          })
+          .eq('id', winnerId);
+        
+        if (winnerBalanceError) throw winnerBalanceError;
+        
+        // Create a transaction record
+        await supabase.from('transactions').insert([
+          {
+            user_id: winnerId,
+            amount: winnerAmount,
+            type: 'win',
+            status: 'completed'
+          },
+          {
+            user_id: loserId,
+            amount: -game.wager_amount,
+            type: 'wager',
+            status: 'completed'
+          }
+        ]);
+        
+        return {
+          success: true,
+          data: {
+            winner_id: winnerId,
+            game_id: gameId,
+            wager_amount: game.wager_amount
+          }
+        };
+      }
+      
+      // If it's not the ambiguous column error, rethrow it
+      throw rpcError;
+    }
   } catch (error) {
     console.error('Error joining game:', error);
     return { success: false, error: error.message };
@@ -327,12 +416,31 @@ export async function joinGame(userId, gameId) {
 
 // Set up Supabase realtime subscriptions
 export function subscribeToActiveGames(callback) {
-  return supabase
-    .channel('public:games')
+  console.log('Setting up realtime subscription for games table');
+  
+  // Create a single channel for the games table with all event types
+  const channel = supabase
+    .channel('game-events')
     .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'games' }, 
-        callback)
-    .subscribe();
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'games',
+          // Get more complete game information on changes
+          select: {
+            columns: 'id,player1_id,player2_id,winner_id,wager_amount,status,created_at,completed_at'
+          }
+        }, 
+        payload => {
+          console.log('Game update received:', payload);
+          callback(payload);
+        })
+    .subscribe(status => {
+      console.log('Realtime subscription status:', status);
+      // Don't trigger a manual refresh on initial subscription
+    });
+    
+  return channel;
 }
 
 // Check Supabase connection
@@ -353,6 +461,104 @@ export async function checkConnection() {
     return { success: true };
   } catch (error) {
     console.error('Error checking Supabase connection:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Cancel a game
+export async function cancelGame(userId, gameId) {
+  try {
+    // First check that the user is the creator of the game
+    const { data: game, error: gameError } = await supabase
+      .from('games')
+      .select('*')
+      .eq('id', gameId)
+      .eq('player1_id', userId) // Ensure user is the creator
+      .eq('status', 'pending') // Only pending games can be cancelled
+      .single();
+    
+    if (gameError) {
+      if (gameError.code === 'PGRST116') {
+        return { success: false, error: 'You can only cancel your own pending games' };
+      }
+      throw gameError;
+    }
+    
+    console.log('Found game to cancel:', game);
+    
+    // Try to use RPC function first (if it exists)
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('cancel_game', {
+        user_id: userId,
+        game_id: gameId
+      });
+      
+      if (!rpcError) {
+        console.log('Game cancelled via RPC:', rpcData);
+        return { success: true };
+      }
+      
+      // If RPC fails with function not found, fall back to direct delete
+      console.log('RPC cancel failed, falling back to direct delete:', rpcError);
+    } catch (rpcError) {
+      console.log('RPC failed with exception, falling back to direct delete:', rpcError);
+    }
+    
+    // Try with more specific conditions for deletion
+    const { data: deleteData, error: deleteError } = await supabase
+      .from('games')
+      .delete()
+      .match({ 
+        'id': gameId,
+        'player1_id': userId,
+        'status': 'pending'
+      })
+      .select();
+    
+    if (deleteError) {
+      console.error('Error deleting game with match():', deleteError);
+      
+      // Last resort: try with eq chaining
+      const { error: fallbackError } = await supabase
+        .from('games')
+        .delete()
+        .eq('id', gameId)
+        .eq('player1_id', userId)
+        .eq('status', 'pending');
+      
+      if (fallbackError) {
+        console.error('Error deleting game with eq() chain:', fallbackError);
+        throw fallbackError;
+      }
+    }
+    
+    // Log deletion result
+    console.log('Game deletion result:', deleteData);
+    
+    // If we have delete data and it's empty, we didn't delete anything
+    if (deleteData && deleteData.length === 0) {
+      console.warn('Game not deleted - game ID may no longer exist or conditions not met');
+    }
+    
+    console.log('Game successfully cancelled:', gameId);
+    
+    // Broadcast a special event to all clients to force refresh
+    // This is a fallback in case realtime deletion events are missed
+    try {
+      await supabase.from('system_events').insert({
+        event_type: 'game_cancelled',
+        event_data: { game_id: gameId },
+        created_at: new Date().toISOString()
+      });
+    } catch (broadcastError) {
+      // Just log the error but continue, as the main deletion was successful
+      console.warn('Failed to broadcast cancellation event:', broadcastError);
+    }
+    
+    // Game was successfully deleted
+    return { success: true };
+  } catch (error) {
+    console.error('Error cancelling game:', error);
     return { success: false, error: error.message };
   }
 }

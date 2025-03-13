@@ -14,7 +14,8 @@ import {
     getActiveGames, 
     joinGame, 
     subscribeToActiveGames,
-    checkConnection
+    checkConnection,
+    cancelGame
 } from './supabase.js';
 import auth from './auth.js';
 import transactions from './transactions.js';
@@ -61,7 +62,7 @@ try {
         };
         
         // Render active games
-        const renderGames = () => {
+        const renderGames = async () => {
             wagersContainer.innerHTML = '';
             
             if (activeGames.length === 0) {
@@ -69,9 +70,21 @@ try {
                 return;
             }
             
+            // Get current user to identify their games
+            const currentUser = await getCurrentUser();
+            
             activeGames.forEach(game => {
                 const gameCard = document.createElement('div');
                 gameCard.className = 'bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-yellow-500 transition';
+                
+                // Check if the current user is the creator of this game
+                const isCreator = currentUser && game.playerId === currentUser.id;
+                
+                // Show different styling for the user's own games
+                if (isCreator) {
+                    gameCard.classList.add('border-yellow-500');
+                }
+                
                 gameCard.innerHTML = `
                     <div class="flex justify-between mb-2">
                         <span class="text-gray-400">Player</span>
@@ -85,16 +98,37 @@ try {
                         <span class="text-gray-400">Created</span>
                         <span class="text-gray-300">${formatRelativeTime(game.createdAt)}</span>
                     </div>
-                    <button class="join-game-btn w-full px-4 py-2 bg-green-600 hover:bg-green-700 rounded transition mt-2" data-game-id="${game.id}">
-                        Join Game
-                    </button>
                 `;
+                
+                // Add either a cancel button (for creator) or join button (for others)
+                const buttonContainer = document.createElement('div');
+                
+                if (isCreator) {
+                    buttonContainer.innerHTML = `
+                        <button class="cancel-game-btn w-full px-4 py-2 bg-red-600 hover:bg-red-700 rounded transition mt-2" data-game-id="${game.id}">
+                            Cancel Wager
+                        </button>
+                    `;
+                } else {
+                    buttonContainer.innerHTML = `
+                        <button class="join-game-btn w-full px-4 py-2 bg-green-600 hover:bg-green-700 rounded transition mt-2" data-game-id="${game.id}">
+                            Join Game
+                        </button>
+                    `;
+                }
+                
+                gameCard.appendChild(buttonContainer);
                 wagersContainer.appendChild(gameCard);
             });
             
             // Add event listeners to join buttons
             document.querySelectorAll('.join-game-btn').forEach(btn => {
                 btn.addEventListener('click', handleJoinGame);
+            });
+            
+            // Add event listeners to cancel buttons
+            document.querySelectorAll('.cancel-game-btn').forEach(btn => {
+                btn.addEventListener('click', handleCancelGame);
             });
         };
         
@@ -104,7 +138,7 @@ try {
                 wagersContainer.innerHTML = '<p class="text-gray-300">Loading available wagers...</p>';
                 const games = await getActiveGames();
                 activeGames = games;
-                renderGames();
+                await renderGames();
             } catch (error) {
                 console.error('Failed to load active games:', error);
                 wagersContainer.innerHTML = '<p class="text-red-400">Error loading wagers. Please try again later.</p>';
@@ -139,7 +173,15 @@ try {
             try {
                 const result = await joinGame(user.id, gameId);
                 if (!result.success) {
-                    alert(result.error || 'Failed to join game');
+                    const errorMessage = result.error || 'Failed to join game';
+                    // Display a more user-friendly error
+                    if (errorMessage.includes('Insufficient balance')) {
+                        alert('You do not have enough balance to join this game. Please deposit more bitcoin.');
+                    } else if (errorMessage.includes('ambiguous')) {
+                        alert('There was a technical issue with the game. Please try again later.');
+                    } else {
+                        alert(errorMessage);
+                    }
                     return;
                 }
                 
@@ -152,10 +194,10 @@ try {
                 
                 // Remove game from list
                 activeGames = activeGames.filter(g => g.id !== gameId);
-                renderGames();
+                await renderGames();
             } catch (error) {
                 console.error('Error joining game:', error);
-                alert('Error joining game: ' + error.message);
+                alert('An unexpected error occurred. Please try again later.');
             } finally {
                 // Reset button state
                 e.target.disabled = false;
@@ -250,21 +292,107 @@ try {
         };
         
         // Set up real-time subscription for game updates
-        const setupRealTimeUpdates = () => {
-            const subscription = subscribeToActiveGames(payload => {
+        const setupRealTimeUpdates = async () => {
+            // Get current user to check for creator role
+            const currentUser = await getCurrentUser();
+            
+            // Track if this is the initial subscription to avoid duplicates
+            let isInitialUpdate = true;
+            
+            const subscription = subscribeToActiveGames(async payload => {
+                console.log('Realtime update received:', payload);
+                
+                // Skip the initial automatic updates from subscription setup
+                if (isInitialUpdate) {
+                    isInitialUpdate = false;
+                    console.log('Ignoring initial subscription update');
+                    return;
+                }
+                
                 // Handle different events
-                if (payload.eventType === 'INSERT') {
-                    // New game created
-                    loadActiveGames();
-                } else if (payload.eventType === 'DELETE' || 
-                           (payload.eventType === 'UPDATE' && 
-                            payload.new.status === 'completed')) {
-                    // Game removed or completed
-                    loadActiveGames();
+                if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
+                    // Game created or removed - reload games
+                    console.log('Game created or removed, refreshing list');
+                    await loadActiveGames();
+                } else if (payload.eventType === 'UPDATE') {
+                    if (payload.new && payload.new.status === 'completed') {
+                        // Game completed
+                        console.log('Game completed, refreshing list');
+                        await loadActiveGames();
+                        
+                        // Show coinflip to game creator if that's the current user
+                        if (currentUser && payload.new.player1_id === currentUser.id) {
+                            console.log('Your game was joined and completed!');
+                            
+                            // Show coinflip animation for the creator
+                            const isWinner = payload.new.winner_id === currentUser.id;
+                            showCoinflip(isWinner);
+                            
+                            // Update balance since there's a change
+                            updateBalanceDisplay();
+                        }
+                    }
+                } else if (payload.eventType === 'REFRESH') {
+                    // Manual refresh triggered
+                    console.log('Manual refresh triggered');
+                    await loadActiveGames();
                 }
             });
             
             return subscription;
+        };
+        
+        // Handle cancel game
+        const handleCancelGame = async (e) => {
+            const user = await getCurrentUser();
+            if (!user) {
+                alert('You must be logged in to cancel a game');
+                return;
+            }
+            
+            const gameId = e.target.getAttribute('data-game-id');
+            
+            // Confirm cancellation
+            if (!confirm('Are you sure you want to cancel this wager?')) {
+                return;
+            }
+            
+            // Show loading state
+            e.target.disabled = true;
+            e.target.innerHTML = 'Cancelling...';
+            
+            try {
+                const result = await cancelGame(user.id, gameId);
+                if (!result.success) {
+                    alert(result.error || 'Failed to cancel game');
+                    return;
+                }
+                
+                console.log(`Game successfully cancelled: ${gameId}`);
+                
+                // Only remove from UI if deletion was successful
+                const gameElement = e.target.closest('.bg-gray-800');
+                if (gameElement) {
+                    gameElement.remove();
+                }
+                
+                // Only update array if deletion was successful
+                activeGames = activeGames.filter(g => g.id !== gameId);
+                
+                // If no games left, show the empty state
+                if (activeGames.length === 0) {
+                    wagersContainer.innerHTML = '<p class="text-gray-400">No active wagers available. Create one!</p>';
+                }
+                
+            } catch (error) {
+                console.error('Error cancelling game:', error);
+                alert('An unexpected error occurred. Please try again later.');
+            } finally {
+                // Reset button state in case the element still exists
+                if (!e.target.isConnected) return;
+                e.target.disabled = false;
+                e.target.innerHTML = 'Cancel Wager';
+            }
         };
         
         // Event listeners
@@ -301,7 +429,15 @@ try {
                 await loadActiveGames();
                 
                 // Set up real-time updates
-                const subscription = setupRealTimeUpdates();
+                const subscription = await setupRealTimeUpdates();
+                
+                // Clean up on page unload
+                window.addEventListener('beforeunload', () => {
+                    console.log('Cleaning up subscriptions');
+                    if (subscription && typeof subscription === 'object' && subscription.unsubscribe) {
+                        subscription.unsubscribe();
+                    }
+                });
                 
                 // Update balance if user is logged in
                 updateBalanceDisplay();
