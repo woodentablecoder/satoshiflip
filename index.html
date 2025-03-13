@@ -72,13 +72,33 @@
             </div>
             
             <!-- List of active wagers -->
-            <div class="flex-1 overflow-auto p-6">
-                <h2 class="text-xl text-cyan-400 font-bold mb-6">ACTIVE WAGERS</h2>
+            <div class="container mx-auto p-6">
+                <h2 class="text-3xl font-bold text-cyan-400 mb-6">ACTIVE WAGERS</h2>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="wagers-container">
-                    <!-- Wager cards will be inserted here dynamically -->
-                    <div class="text-gray-400">Loading wagers...</div>
+                <!-- This is the container that will be populated by the JavaScript -->
+                <div id="active-wagers-container" class="space-y-4">
+                    <!-- Games will be dynamically inserted here -->
+                    <!-- Initial loading state -->
+                    <p class="text-gray-300">Loading available wagers...</p>
                 </div>
+                
+                <!-- Empty state message (displayed by JavaScript when needed) -->
+                <template id="no-wagers-template">
+                    <p class="text-gray-300">No active wagers available. Create one!</p>
+                </template>
+                
+                <!-- Game item template -->
+                <template id="game-item-template">
+                    <div class="bg-gray-800 border border-gray-700 p-4 rounded-lg mb-4 flex justify-between items-center">
+                        <div>
+                            <p class="text-gray-400">Creator: <span class="creator-name"></span></p>
+                            <p class="text-xl font-bold text-white">Wager: <span class="wager-amount"></span></p>
+                        </div>
+                        <button class="join-game-btn px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">
+                            Join Game
+                        </button>
+                    </div>
+                </template>
             </div>
         </div>
     </div>

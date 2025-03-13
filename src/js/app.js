@@ -13,7 +13,8 @@ import {
     createGame, 
     getActiveGames, 
     joinGame, 
-    subscribeToActiveGames 
+    subscribeToActiveGames,
+    checkConnection
 } from './supabase.js';
 import auth from './auth.js';
 import transactions from './transactions.js';
@@ -28,7 +29,7 @@ try {
         // DOM elements
         const createGameBtn = document.getElementById('create-game');
         const wagerAmountInput = document.getElementById('wager-amount');
-        const wagersContainer = document.getElementById('wagers-container');
+        const wagersContainer = document.getElementById('active-wagers-container');
         const coinflipModal = document.getElementById('coinflip-modal');
         const coin = document.getElementById('coin');
         const resultText = document.getElementById('result');
@@ -99,9 +100,15 @@ try {
         
         // Load active games from Supabase
         const loadActiveGames = async () => {
-            const games = await getActiveGames();
-            activeGames = games;
-            renderGames();
+            try {
+                wagersContainer.innerHTML = '<p class="text-gray-300">Loading available wagers...</p>';
+                const games = await getActiveGames();
+                activeGames = games;
+                renderGames();
+            } catch (error) {
+                console.error('Failed to load active games:', error);
+                wagersContainer.innerHTML = '<p class="text-red-400">Error loading wagers. Please try again later.</p>';
+            }
         };
         
         // Update user balance display
@@ -279,16 +286,31 @@ try {
         
         // Initialize
         const init = async () => {
-            // Load active games
-            await loadActiveGames();
-            
-            // Set up real-time updates
-            const subscription = setupRealTimeUpdates();
-            
-            // Update balance if user is logged in
-            updateBalanceDisplay();
-            
-            console.log('App initialization complete');
+            try {
+                console.log('Initializing app...');
+                
+                // Check Supabase connection
+                const connectionCheck = await checkConnection();
+                if (!connectionCheck.success) {
+                    console.error('Failed to connect to Supabase:', connectionCheck.error);
+                    wagersContainer.innerHTML = '<p class="text-red-400">Unable to connect to the server. Please try again later.</p>';
+                    return;
+                }
+                
+                // Load active games
+                await loadActiveGames();
+                
+                // Set up real-time updates
+                const subscription = setupRealTimeUpdates();
+                
+                // Update balance if user is logged in
+                updateBalanceDisplay();
+                
+                console.log('App initialization complete');
+            } catch (error) {
+                console.error('Error during app initialization:', error);
+                wagersContainer.innerHTML = '<p class="text-red-400">An error occurred during initialization. Please refresh the page.</p>';
+            }
         };
         
         // Start the app

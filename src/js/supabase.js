@@ -209,28 +209,84 @@ export async function createGame(userId, wagerAmount) {
 // Get active games
 export async function getActiveGames() {
   try {
-    const { data, error } = await supabase
-      .from('games')
-      .select(`
-        id,
-        wager_amount,
-        created_at,
-        player1_id,
-        users!games_player1_id_fkey (email)
-      `)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
+    console.log('Fetching active games...');
     
-    if (error) throw error;
-    
-    // Format the returned data
-    return data.map(game => ({
-      id: game.id,
-      playerId: game.player1_id,
-      playerName: game.users.email.split('@')[0], // Use the username part of the email
-      wagerAmount: game.wager_amount,
-      createdAt: new Date(game.created_at)
-    }));
+    // First try to get user information using a join, but if that fails, try without the join
+    try {
+      const { data, error } = await supabase
+        .from('games')
+        .select(`
+          id,
+          wager_amount,
+          created_at,
+          player1_id,
+          users!games_player1_id_fkey (email)
+        `)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        throw error;
+      }
+      
+      console.log('Games data with user join successful:', data);
+      
+      if (!data || data.length === 0) {
+        console.log('No active games found');
+        return [];
+      }
+      
+      // Format the returned data
+      return data.map(game => {
+        // Check if users object exists and has email property
+        if (!game.users) {
+          console.warn(`Game ${game.id} has no associated user data. This may indicate a foreign key issue.`);
+        }
+        
+        const email = game.users?.email || 'anonymous@example.com';
+        const username = email.split('@')[0];
+        
+        return {
+          id: game.id,
+          playerId: game.player1_id,
+          playerName: username,
+          wagerAmount: game.wager_amount,
+          createdAt: new Date(game.created_at)
+        };
+      });
+    } catch (joinError) {
+      console.warn('Error fetching games with user join, trying without join:', joinError);
+      
+      // Fallback to a simpler query without the join
+      const { data, error } = await supabase
+        .from('games')
+        .select('id, wager_amount, created_at, player1_id')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error in fallback query:', error);
+        throw error;
+      }
+      
+      console.log('Games data without user join:', data);
+      
+      if (!data || data.length === 0) {
+        console.log('No active games found in fallback query');
+        return [];
+      }
+      
+      // Format the returned data with generic user info
+      return data.map(game => {
+        return {
+          id: game.id,
+          playerId: game.player1_id,
+          playerName: 'User ' + game.player1_id.substring(0, 4),
+          wagerAmount: game.wager_amount,
+          createdAt: new Date(game.created_at)
+        };
+      });
+    }
   } catch (error) {
     console.error('Error getting active games:', error);
     return [];
@@ -277,6 +333,28 @@ export function subscribeToActiveGames(callback) {
         { event: '*', schema: 'public', table: 'games' }, 
         callback)
     .subscribe();
+}
+
+// Check Supabase connection
+export async function checkConnection() {
+  try {
+    // Use a simpler query that doesn't use aggregate functions
+    const { data, error } = await supabase
+      .from('games')
+      .select('id')
+      .limit(1);
+    
+    if (error) {
+      console.error('Supabase connection check failed:', error);
+      return { success: false, error: error.message };
+    }
+    
+    console.log('Supabase connection successful');
+    return { success: true };
+  } catch (error) {
+    console.error('Error checking Supabase connection:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 export default supabase; 
