@@ -481,21 +481,13 @@ export function subscribeToActiveGames(callback) {
 // Check Supabase connection
 export async function checkConnection() {
   try {
-    // Use a simpler query that doesn't use aggregate functions
-    const { data, error } = await supabase
-      .from('games')
-      .select('id')
-      .limit(1);
+    const { data, error } = await supabase.from('users').select('id').limit(1);
     
-    if (error) {
-      console.error('Supabase connection check failed:', error);
-      return { success: false, error: error.message };
-    }
+    if (error) throw error;
     
-    console.log('Supabase connection successful');
-    return { success: true };
+    return { success: true, data };
   } catch (error) {
-    console.error('Error checking Supabase connection:', error);
+    console.error('Error checking connection:', error);
     return { success: false, error: error.message };
   }
 }
@@ -596,6 +588,89 @@ export async function cancelGame(userId, gameId) {
     console.error('Error cancelling game:', error);
     return { success: false, error: error.message };
   }
+}
+
+// Chat functionality
+export async function sendChatMessage(message, userId = null, username = null) {
+  try {
+    const messageData = {
+      message: message.trim()
+    };
+    
+    // If user is logged in, add the user ID
+    if (userId) {
+      messageData.user_id = userId;
+    }
+    
+    // Add username for non-authenticated users or if provided
+    if (username) {
+      messageData.username = username;
+    }
+    
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .insert([messageData])
+      .select();
+      
+    if (error) throw error;
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error sending chat message:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getChatMessages(limit = 50) {
+  try {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select(`
+        id, 
+        message, 
+        created_at, 
+        user_id, 
+        username,
+        users(email)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+      
+    if (error) throw error;
+    
+    return { 
+      success: true, 
+      data: data.reverse() // Return in chronological order
+    };
+  } catch (error) {
+    console.error('Error getting chat messages:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export function subscribeToChatMessages(callback) {
+  console.log('Setting up realtime subscription for chat messages');
+  
+  const channel = supabase
+    .channel('chat-events')
+    .on('postgres_changes', 
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'chat_messages',
+          select: {
+            columns: 'id,user_id,username,message,created_at'
+          }
+        }, 
+        payload => {
+          console.log('Chat message received:', payload);
+          callback(payload.new);
+        })
+    .subscribe(status => {
+      console.log('Chat subscription status:', status);
+    });
+    
+  return channel;
 }
 
 export default supabase; 

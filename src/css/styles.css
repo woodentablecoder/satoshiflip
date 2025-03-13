@@ -61,12 +61,12 @@
 }
 
 .heads {
-  background-color: #f5cc7a;
+  background-color: #ffaa00;
   z-index: 2;
 }
 
 .tails {
-  background-color: #dda147;
+  background-color: #dddddd;
   transform: rotateY(180deg);
 }
 
@@ -100,5 +100,5 @@
 } 
 
 #refresh-games-btn { /* Refresh button */
-  background-color: #f5cc7a;
+  background-color: #ffaa00;
 }

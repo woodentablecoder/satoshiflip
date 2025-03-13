@@ -59,6 +59,29 @@
                 </button>
             </div>
             
+            <!-- Chat Box -->
+            <div class="mb-8 flex-grow flex flex-col">
+                <div class="mb-2 text-yellow-500">
+                    <span>Public Chat</span>
+                </div>
+                <div id="chat-messages" class="bg-gray-700 border border-gray-600 rounded p-2 overflow-y-auto h-64 mb-2 text-sm">
+                    <!-- Messages will be populated here -->
+                </div>
+                <div class="flex">
+                    <input 
+                        type="text" 
+                        id="chat-input" 
+                        class="flex-grow bg-gray-700 border border-gray-600 p-2 rounded-l text-white"
+                        placeholder="Type a message..."
+                    >
+                    <button 
+                        id="send-message" 
+                        class="px-3 py-2 bg-green-600 hover:bg-green-700 rounded-r text-white">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+            
             <div class="mt-auto text-xs text-gray-500">
                 <p>1.00000000 BTC = ₿ 100 000 000</p>
             </div>
@@ -111,22 +134,24 @@
     </div>
     
     <!-- Coinflip Modal -->
-    <div id="coinflip-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50">
-        <div class="text-center">
-            <div id="coin" class="coin">
-                <div class="coin-inner">
-                    <div class="side heads">
-                        <span>H</span>
-                    </div>
-                    <div class="side tails">
-                        <span>T</span>
+    <div id="coinflip-modal" class="fixed inset-0 bg-black/80 hidden z-50">
+        <div class="h-full w-full flex items-center justify-center">
+            <div class="text-center">
+                <div id="coin" class="coin">
+                    <div class="coin-inner">
+                        <div class="side heads">
+                            <span>H</span>
+                        </div>
+                        <div class="side tails">
+                            <span>T</span>
+                        </div>
                     </div>
                 </div>
+                <p id="result" class="text-center mt-4 text-white text-2xl mb-8">Flipping...</p>
+                <button id="close-modal" class="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded transition">
+                    Close
+                </button>
             </div>
-            <p id="result" class="text-center mt-4 text-white text-2xl mb-8">Flipping...</p>
-            <button id="close-modal" class="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded transition">
-                Close
-            </button>
         </div>
     </div>
     

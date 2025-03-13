@@ -282,4 +282,46 @@ function updateUIForAuthState(isLoggedIn) {
   }));
 }
 
-export default { initAuth }; 
+// Show auth modal function
+function showAuthModal() {
+  console.log('Showing auth modal');
+  if (authModal) {
+    authModal.classList.remove('hidden');
+  } else {
+    console.error('Auth modal not found');
+  }
+}
+
+function auth() {
+  return {
+    initAuth,
+    showAuthModal,
+    getCurrentUser: () => {
+      // Return a promise-based version that is more reliable
+      return new Promise(async (resolve) => {
+        try {
+          const { data, error } = await import('./supabase.js').then(
+            module => module.default.auth.getUser()
+          );
+          
+          if (error) {
+            console.error('Error getting current user:', error);
+            resolve(null);
+            return;
+          }
+          
+          if (data && data.user) {
+            resolve(data.user);
+          } else {
+            resolve(null);
+          }
+        } catch (err) {
+          console.error('Error in getCurrentUser:', err);
+          resolve(null);
+        }
+      });
+    }
+  };
+}
+
+export default auth(); 
