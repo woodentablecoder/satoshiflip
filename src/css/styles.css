@@ -4,13 +4,21 @@
 /* Custom styles for SatoshiFlip */
 /* Global font setting */
 body, html {
-  font-family:  'Recursive', monospace;
+  font-family: 'Recursive', monospace;
+}
+
+/* Sidebar styles */
+.w-1\/5 {
+  min-width: 240px;
+  transition: width 0.3s ease;
 }
 
 .satoshi-title {
   display: flex;
   justify-content: center;
   align-items: center;
+  min-height: 60px;
+  padding: 10px 0;
 }
 
 @font-face {
@@ -26,7 +34,19 @@ body, html {
 }
 
 #refresh-games-btn { /* Refresh button */
-  background-color: #ffaa00;
+  background-color: #1D1D1D;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 60px;
+  height: 100%;
+  transition: all 0.2s ease-in-out;
+  border: 2px solid #ffffff1f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .text-gray-300 { /* Deposit to your SatoshiFlip account: */
@@ -65,13 +85,24 @@ body, html {
   justify-content: space-between;
   margin-top: 20px;
   margin-bottom: 30px;
+  flex-wrap: nowrap;
+  gap: 4px;
 }
 
 .button-container {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
+}
+
+.button-container button {
+  flex-shrink: 0;
+  min-width: 44px;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
 }
 
 #home-btn {
@@ -81,8 +112,8 @@ body, html {
   padding: 10px 20px;
   border-radius: 5px;
   cursor: pointer;
-  width: 60px;
-  height: 100%;
+  min-width: 60px;
+  min-height: 60px;
   transition: all 0.2s ease-in-out;
   border: 2px solid #ffffff1f;
 }
@@ -92,6 +123,19 @@ body, html {
   transform: scale(1.02);
 }
 
+.user-btn {
+  background-color: #1D1D1D;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  min-width: 60px;
+  min-height: 60px;
+  transition: all 0.2s ease-in-out;
+  border: 2px solid #ffffff1f;
+}
+
 #deposit-btn {
   background-color: #1D1D1D;
   color: white;
@@ -99,8 +143,8 @@ body, html {
   padding: 10px 20px;
   border-radius: 5px;
   cursor: pointer;
-  width: 60px;
-  height: 100%;
+  min-width: 60px;
+  min-height: 60px;
   transition: all 0.2s ease-in-out;
   border: 2px solid #ffffff1f;
 }
@@ -117,8 +161,8 @@ body, html {
   padding: 10px 20px;
   border-radius: 5px;
   cursor: pointer;
-  width: 60px;
-  height: 100%;
+  min-width: 60px;
+  min-height: 60px;
   transition: all 0.2s ease-in-out;
   border: 2px solid #ffffff1f;
 }
@@ -136,27 +180,44 @@ body, html {
   margin-bottom: 10px;
   border-radius: 5px;
   color: white;
+  min-width: 0;
 }
 
 .create-game-btn {
   background-color: #1D1D1D;
   color: white;
   border: none;
-  padding: 10px 20px;
+  padding: 10px;
   border-radius: 5px;
   cursor: pointer;
   width: 100%;
-  height: 60px;
+  height: 44px;
   transition: all 0.2s ease-in-out;
   border: 2px solid #ffffff1f;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 0;
 }
 
 .create-game-btn:hover {
   background-color: #62ff51;
 }
+
+.active-wagers-title {
+  font-size: 18px;
+  font-weight: bold;
+  font-family: 'GohuFont', monospace;
+  color: rgba(255, 255, 255, 0.147);
+}
+
+.create-wager {
+  font-size: 18px;
+  font-weight: bold;
+  font-family: 'GohuFont', monospace;
+  color: rgba(255, 255, 255, 0.147);
+}
+
 
 /* Chat section */
 #chat-messages {
@@ -171,6 +232,15 @@ body, html {
 /* Active wagers container */
 #active-wagers-container {
   transition: background-color 0.5s ease;
+}
+
+#active-wagers-container {
+  background-color: #1D1D1D;
+  border: 2px solid #ffffff1f;
+  padding: 10px;
+  border-radius: 5px;
+  color: white;
+  min-width: 0;
 }
 
 /* Animation for refreshing games */
@@ -265,5 +335,49 @@ body, html {
     .sidebar-closed {
         transform: translateX(-100%);
     }
-} 
+}
+
+/* Sidebar content container */
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  width: 100%;
+}
+
+/* User balance display */
+.user-balance {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Media queries for responsive sidebar */
+@media (max-width: 1024px) {
+  .w-1\/5 {
+    min-width: 200px;
+  }
+  
+  .satoshiflip-title {
+    font-size: 20px;
+  }
+  
+  .button-container button {
+    min-width: 36px;
+    width: 36px;
+    height: 36px;
+    padding: 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  .w-1\/5 {
+    min-width: 180px;
+  }
+  
+  .satoshiflip-title {
+    font-size: 18px;
+  }
+}
 

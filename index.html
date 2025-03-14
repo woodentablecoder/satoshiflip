@@ -27,7 +27,7 @@
                 <button id="home-btn">
                     <img src="public/images/home.svg" alt="Withdraw" style="filter: brightness(0) invert(1);">
                 </button>
-                <button id="explicit-auth-btn" class="px-2 py-2 bg-[#1D1D1D] hover:bg-[rgb(50,50,50)] hover:scale-[1.02] rounded transition text-s font-bold border-[2px] border-[#ffffff1f]">
+                <button id="explicit-auth-btn" class="user-btn">
                     <img src="public/images/smile-mouth-open.svg" alt="Profile" style="filter: brightness(0) invert(1);">
                 </button>
             </div>
@@ -71,19 +71,16 @@
         <!-- Main content area -->
         <div class="flex-1 flex flex-col overflow-hidden bg-[#161616]">
             <!-- Message of the day banner -->
-            <div class="bg-[#222222] border-b border-gray-700 p-3 text-center text-white font-extrabold text-lg"> <!-- Changed message of the day color to #182022 -->
+            <div class="bg-[#222222] border-b border-gray-700 p-3 text-center text-white font-extrabold text-lg" style="font-family: 'GohuFont', monospace;"> <!-- Changed message of the day color to #182022 -->
                 <p>Follow @satoshiflip on X for updates and giveaways!</p>
             </div>
             
             <!-- List of active wagers -->
             <div class="container mx-auto p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold text-white">ACTIVE WAGERS</h2>
-                    <button id="refresh-games-btn" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-white flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Refresh
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="active-wagers-title">ACTIVE WAGERS</h2>
+                    <button id="refresh-games-btn" style="transition: transform 0.2s ease-in-out;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                        <img src="public/images/refresh.svg" style="filter: brightness(0) invert(1);" class="animate-pulse" style="animation: refreshPulse 1s infinite ease-in-out; color: #F7931A">
                     </button>
                 </div>
                 
@@ -100,7 +97,7 @@
                 
                 <!-- Game item template -->
                 <template id="game-item-template">
-                    <div class="bg-gray-800 border border-gray-700 p-4 rounded-lg mb-4 flex justify-between items-center">
+                    <div class="game-card-container">
                         <div>
                             <p class="text-gray-400">Creator: <span class="creator-name"></span></p>
                             <p class="text-xl font-bold text-white">Wager: <span class="wager-amount"></span></p>

@@ -128,15 +128,13 @@ try {
                 if (!game) return;
                 
                 const gameCard = document.createElement('div');
-                gameCard.className = 'bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-yellow-500 transition';
+                gameCard.className = 'bg-[#1D1D1D] rounded-lg p-4 hover:border-yellow-500 transition';
                 
                 // Check if the current user is the creator of this game
                 const isCreator = currentUser && game.playerId === currentUser.id;
                 
                 // Show different styling for the user's own games
-                if (isCreator) {
-                    gameCard.classList.add('border-yellow-500');
-                }
+                // Creator's games have no special styling
                 
                 gameCard.innerHTML = `
                     <div class="flex justify-between mb-2">
