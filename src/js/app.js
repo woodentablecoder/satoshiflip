@@ -29,7 +29,7 @@ try {
         console.log('DOM loaded, initializing app');
         
         // DOM elements
-        const createGameBtn = document.getElementById('create-game');
+        const createGameBtn = document.getElementById('create-game-btn');
         const wagerAmountInput = document.getElementById('wager-amount');
         const wagersContainer = document.getElementById('active-wagers-container');
         const coinflipModal = document.getElementById('coinflip-modal');
@@ -428,8 +428,10 @@ try {
             }
             
             // Show loading state
-            createGameBtn.disabled = true;
-            createGameBtn.innerHTML = 'Creating...';
+            if (createGameBtn) {
+                createGameBtn.disabled = true;
+                createGameBtn.innerHTML = 'Creating...';
+            }
             
             try {
                 const result = await createGame(user.id, wagerAmount);
@@ -465,8 +467,10 @@ try {
                 alert('Error creating game: ' + error.message);
             } finally {
                 // Reset button state
-                createGameBtn.disabled = false;
-                createGameBtn.innerHTML = 'Create Game';
+                if (createGameBtn) {
+                    createGameBtn.disabled = false;
+                    createGameBtn.innerHTML = 'Create Game';
+                }
             }
         };
         
@@ -614,8 +618,70 @@ try {
         };
         
         // Event listeners
-        createGameBtn.addEventListener('click', handleCreateGame);
-        closeModalBtn.addEventListener('click', closeModal);
+        const setupEventListeners = () => {
+            // Set up event listeners for UI buttons
+            if (createGameBtn) {
+                createGameBtn.addEventListener('click', handleCreateGame);
+            } else {
+                console.error('Create game button not found in the DOM');
+            }
+            
+            // Change these global event listeners to more specific ones to avoid conflicts
+            // Instead of adding the event listeners to the entire document
+            // Add them only to the wagers container
+            if (wagersContainer) {
+                wagersContainer.addEventListener('click', (e) => {
+                    // For joining games
+                    if (e.target.classList.contains('join-game-btn')) {
+                        handleJoinGame(e);
+                    }
+                    
+                    // For cancelling games
+                    if (e.target.classList.contains('cancel-game-btn')) {
+                        handleCancelGame(e);
+                    }
+                });
+            }
+            
+            // Set up refresh button
+            const refreshBtn = document.getElementById('refresh-games-btn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', loadActiveGames);
+            }
+            
+            // Set up deposit/withdraw buttons
+            const depositBtn = document.getElementById('deposit-btn');
+            const withdrawBtn = document.getElementById('withdraw-btn');
+            
+            if (depositBtn) depositBtn.addEventListener('click', transactions.handleDeposit);
+            if (withdrawBtn) withdrawBtn.addEventListener('click', transactions.handleWithdraw);
+            
+            // Set up auth button
+            const authBtn = document.getElementById('explicit-auth-btn');
+            if (authBtn) {
+                authBtn.addEventListener('click', auth.showAuthModal);
+            }
+            
+            // Chat event listeners
+            if (sendMessageBtn) {
+                sendMessageBtn.addEventListener('click', sendMessage);
+            }
+            
+            if (chatInput) {
+                chatInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        sendMessage();
+                    }
+                });
+            }
+
+            // Modal close button
+            if (closeModalBtn) {
+                closeModalBtn.addEventListener('click', closeModal);
+            } else {
+                console.error('Close modal button not found in the DOM');
+            }
+        };
         
         // Listen for auth state changes
         window.addEventListener('authStateChanged', async (e) => {
@@ -839,60 +905,6 @@ try {
             } catch (error) {
                 console.error('Error during app initialization:', error);
                 showToast('An error occurred during app initialization. Please refresh.', 'error');
-            }
-        };
-        
-        const setupEventListeners = () => {
-            // Set up event listeners for UI buttons
-            createGameBtn.addEventListener('click', handleCreateGame);
-            
-            // Change these global event listeners to more specific ones to avoid conflicts
-            // Instead of adding the event listeners to the entire document
-            // Add them only to the wagers container
-            if (wagersContainer) {
-                wagersContainer.addEventListener('click', (e) => {
-                    // For joining games
-                    if (e.target.classList.contains('join-game-btn')) {
-                        handleJoinGame(e);
-                    }
-                    
-                    // For cancelling games
-                    if (e.target.classList.contains('cancel-game-btn')) {
-                        handleCancelGame(e);
-                    }
-                });
-            }
-            
-            // Set up refresh button
-            const refreshBtn = document.getElementById('refresh-games-btn');
-            if (refreshBtn) {
-                refreshBtn.addEventListener('click', loadActiveGames);
-            }
-            
-            // Set up deposit/withdraw buttons
-            const depositBtn = document.getElementById('deposit-btn');
-            const withdrawBtn = document.getElementById('withdraw-btn');
-            
-            if (depositBtn) depositBtn.addEventListener('click', transactions.handleDeposit);
-            if (withdrawBtn) withdrawBtn.addEventListener('click', transactions.handleWithdraw);
-            
-            // Set up auth button
-            const authBtn = document.getElementById('explicit-auth-btn');
-            if (authBtn) {
-                authBtn.addEventListener('click', auth.showAuthModal);
-            }
-            
-            // Chat event listeners
-            if (sendMessageBtn) {
-                sendMessageBtn.addEventListener('click', sendMessage);
-            }
-            
-            if (chatInput) {
-                chatInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        sendMessage();
-                    }
-                });
             }
         };
         

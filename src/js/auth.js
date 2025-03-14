@@ -260,7 +260,7 @@ function updateUIForAuthState(isLoggedIn) {
   }
   
   // Enable/disable game creation
-  const createGameBtn = document.getElementById('create-game');
+  const createGameBtn = document.getElementById('create-game-btn');
   const wagerInput = document.getElementById('wager-amount');
   
   if (createGameBtn) {

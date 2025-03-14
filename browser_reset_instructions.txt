@@ -1,0 +1,35 @@
+BROWSER RESET INSTRUCTIONS FOR USER ID: 2b6552f1-4734-4489-aa2f-314b156d755f
+
+Since the error only occurs on your specific client, it's likely due to cached resources or corrupted local storage data. Please try the following steps:
+
+1. CLEAR BROWSER DATA:
+   - Open your browser settings
+   - Navigate to History/Privacy
+   - Select "Clear browsing data" 
+   - Check boxes for: 
+     * Cookies and site data
+     * Cached images and files
+     * Local storage
+   - Set time range to "All time"
+   - Click "Clear data"
+
+2. HARD REFRESH THE PAGE:
+   - Windows/Linux: Press Ctrl+F5 or Ctrl+Shift+R
+   - Mac: Press Cmd+Shift+R
+
+3. TRY INCOGNITO/PRIVATE MODE:
+   - Open a new incognito/private browsing window
+   - Navigate to the application 
+   - Check if the error persists
+
+4. CHECK LOCAL STORAGE (If you're technically inclined):
+   - Open browser developer tools (F12 or right-click > Inspect)
+   - Go to "Application" tab
+   - Expand "Local Storage" on the left
+   - Select your site
+   - Check for and delete any corrupted entries
+
+5. TRY DIFFERENT BROWSER:
+   - If the above steps don't work, try accessing the application with a different browser
+
+This error appears to be specific to your client and is related to DOM elements not being found correctly when the application initializes. The steps above should reset your local environment and fix the issue. 
