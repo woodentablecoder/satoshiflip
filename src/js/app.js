@@ -137,17 +137,15 @@ try {
                 // Creator's games have no special styling
                 
                 gameCard.innerHTML = `
-                    <div class="flex justify-between mb-2">
-                        <span class="text-gray-400">Player</span>
-                        <span class="text-white font-mono">${game.playerName}</span>
-                    </div>
-                    <div class="flex justify-between mb-4">
-                        <span class="text-gray-400">Wager</span>
-                        <span class="text-yellow-500 font-mono">${formatSatoshis(game.wagerAmount)}</span>
-                    </div>
-                    <div class="flex justify-between mb-2">
-                        <span class="text-gray-400">Created</span>
-                        <span class="text-gray-300">${formatRelativeTime(game.createdAt)}</span>
+                    <div class="flex items-start gap-4 mb-4" style="min-width: 250px; background-color: rgb(22, 22, 22); padding: 20px; border-radius: 10px; border: 2px solid #ffffff1f">
+                        <div class="flex flex-col items-center gap-2">
+                            <img src="/images/user.svg" alt="User profile" class="w-16 h-16 bg-white rounded-[10px] p-2" />
+                            <span class="text-[rgba(255,255,255,1)] font-mono text-sm">${game.playerName}</span>
+                        </div>
+                        <div class="flex flex-col items-end flex-grow">
+                        <span class="text-[rgba(255,255,255,0.8)] text-right">${game.teamChoice === 'heads' ? '🟡 Heads' : '⚪ Tails'}</span>
+                            <span class="text-yellow-500 font-mono text-right">${formatSatoshis(game.wagerAmount)}</span>
+                        </div>
                     </div>
                 `;
                 
@@ -346,8 +344,8 @@ try {
                             const isWinner = (currentUserId === winnerId);
                             console.log('User is in game! Is winner?', isWinner);
                             
-                            // Show the coinflip animation
-                            showCoinflip(isWinner);
+                            // Show the coinflip animation with the actual result
+                            showCoinflip(isWinner, payload.new.flip_result);
                             
                             // Update balance after game completes
                             updateBalanceDisplay();
@@ -440,7 +438,7 @@ try {
                     
                     // Force animation display with slight delay to ensure UI is ready
                     setTimeout(() => {
-                        showCoinflip(isWinner);
+                        showCoinflip(isWinner, result.data.flip_result);
                     }, 300); // Slightly longer delay to ensure UI readiness
                 } else {
                     // No winner data immediately available, but game is joined
@@ -478,7 +476,7 @@ try {
         };
         
         // Handle create game
-        const handleCreateGame = async () => {
+        const handleCreateGame = async (teamChoice) => {
             const user = await getCurrentUser();
             if (!user) {
                 alert('You must be logged in to create a game');
@@ -499,7 +497,7 @@ try {
             }
             
             try {
-                const result = await createGame(user.id, wagerAmount);
+                const result = await createGame(user.id, wagerAmount, teamChoice);
                 
                 if (!result.success) {
                     if (result.error.includes('one game at a time')) {
@@ -540,8 +538,8 @@ try {
         };
         
         // Show coinflip animation
-        const showCoinflip = (isWinner) => {
-            console.log('SHOWING COINFLIP ANIMATION - Winner:', isWinner);
+        const showCoinflip = (isWinner, flipResult) => {
+            console.log('SHOWING COINFLIP ANIMATION - Winner:', isWinner, 'Flip:', flipResult);
             
             try {
                 // Get modal element
@@ -588,13 +586,13 @@ try {
                     
                     // Show the result after animation
                     setTimeout(() => {
-                        if (isWinner) {
-                            resultElement.textContent = 'Heads! You win!';
-                            resultElement.className = 'text-center mt-4 text-green-500 text-2xl mb-8';
+                        if (flipResult === 'heads') {
+                            resultElement.textContent = `${isWinner ? 'You win!' : 'You lose!'} (Heads)`;
+                            resultElement.className = `text-center mt-4 ${isWinner ? 'text-green-500' : 'text-red-500'} text-2xl mb-8`;
                         } else {
                             coinInnerElement.style.transform = 'rotateY(990deg)';
-                            resultElement.textContent = 'Tails! You lose!';
-                            resultElement.className = 'text-center mt-4 text-red-500 text-2xl mb-8';
+                            resultElement.textContent = `${isWinner ? 'You win!' : 'You lose!'} (Tails)`;
+                            resultElement.className = `text-center mt-4 ${isWinner ? 'text-green-500' : 'text-red-500'} text-2xl mb-8`;
                         }
                     }, 3000);
                 }, 50);
@@ -687,9 +685,34 @@ try {
             try {
                 console.log('Setting up event listeners');
                 
+                // Set up team choice buttons
+                const headsBtn = document.getElementById('heads-btn');
+                const tailsBtn = document.getElementById('tails-btn');
+                let selectedTeam = 'heads'; // Default choice
+                
+                if (headsBtn && tailsBtn) {
+                    const updateTeamButtons = () => {
+                        headsBtn.style.backgroundColor = selectedTeam === 'heads' ? '#62ff51' : '#1D1D1D';
+                        tailsBtn.style.backgroundColor = selectedTeam === 'tails' ? '#62ff51' : '#1D1D1D';
+                    };
+                    
+                    headsBtn.addEventListener('click', () => {
+                        selectedTeam = 'heads';
+                        updateTeamButtons();
+                    });
+                    
+                    tailsBtn.addEventListener('click', () => {
+                        selectedTeam = 'tails';
+                        updateTeamButtons();
+                    });
+                    
+                    // Set initial state
+                    updateTeamButtons();
+                }
+                
                 // Set up event listeners for UI buttons
                 if (createGameBtn) {
-                    createGameBtn.addEventListener('click', handleCreateGame);
+                    createGameBtn.addEventListener('click', () => handleCreateGame(selectedTeam));
                     console.log('✓ Create game button listener attached');
                 } else {
                     console.error('Create game button not found in the DOM');

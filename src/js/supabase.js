@@ -184,7 +184,7 @@ export async function getUserBalance(userId) {
  */
 
 // Create a new game
-export async function createGame(userId, wagerAmount) {
+export async function createGame(userId, wagerAmount, teamChoice) {
   try {
     // Check user balance
     const balance = await getUserBalance(userId);
@@ -221,7 +221,8 @@ export async function createGame(userId, wagerAmount) {
     // Create game in transaction
     const { data, error } = await supabase.rpc('create_game', {
       user_id: userId,
-      amount: wagerAmount
+      amount: wagerAmount,
+      team: teamChoice
     });
     
     if (error) throw error;
@@ -243,6 +244,7 @@ export async function getActiveGames() {
       .select(`
         id,
         wager_amount,
+        team_choice,
         created_at,
         player1_id,
         player1:player1_id (email)
@@ -277,6 +279,7 @@ export async function getActiveGames() {
         playerId: game.player1_id,
         playerName: username,
         wagerAmount: game.wager_amount,
+        teamChoice: game.team_choice,
         createdAt: new Date(game.created_at)
       };
     }).filter(game => game !== null); // Remove any null entries

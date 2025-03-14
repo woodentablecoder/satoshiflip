@@ -18,6 +18,7 @@ CREATE TABLE games (
   player1_id UUID REFERENCES users(id),
   player2_id UUID REFERENCES users(id),
   wager_amount BIGINT NOT NULL, -- In satoshis
+  team_choice TEXT CHECK (team_choice IN ('heads', 'tails')), -- Creator's choice
   status TEXT CHECK (status IN ('pending', 'active', 'completed')),
   winner_id UUID REFERENCES users(id),
   created_at TIMESTAMP DEFAULT NOW(),
@@ -61,7 +62,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- RPC function to create a game
-CREATE OR REPLACE FUNCTION create_game(user_id UUID, amount BIGINT)
+CREATE OR REPLACE FUNCTION create_game(user_id UUID, amount BIGINT, team TEXT)
 RETURNS UUID AS $$
 DECLARE
   game_id UUID;
@@ -69,6 +70,11 @@ BEGIN
   -- Check balance
   IF (SELECT balance FROM users WHERE id = user_id) < amount THEN
     RAISE EXCEPTION 'Insufficient balance';
+  END IF;
+
+  -- Validate team choice
+  IF team NOT IN ('heads', 'tails') THEN
+    RAISE EXCEPTION 'Invalid team choice. Must be heads or tails.';
   END IF;
 
   -- Deduct wager from balance
@@ -79,8 +85,8 @@ BEGIN
   VALUES (user_id, -amount, 'wager', 'completed');
   
   -- Create game
-  INSERT INTO games (player1_id, wager_amount, status)
-  VALUES (user_id, amount, 'pending')
+  INSERT INTO games (player1_id, wager_amount, team_choice, status)
+  VALUES (user_id, amount, team, 'pending')
   RETURNING id INTO game_id;
   
   RETURN game_id;
@@ -95,6 +101,7 @@ DECLARE
   wager_amount BIGINT;
   winner_id UUID;
   result JSON;
+  flip_result TEXT;
 BEGIN
   -- Get game data
   SELECT * INTO game_data FROM games WHERE id = game_id;
@@ -127,10 +134,13 @@ BEGIN
   VALUES (user_id, -wager_amount, 'wager', 'completed');
   
   -- Perform 50/50 coinflip (random function)
-  IF random() < 0.5 THEN
-    winner_id := game_data.player1_id;
+  flip_result := CASE WHEN random() < 0.5 THEN 'heads' ELSE 'tails' END;
+  
+  -- Determine winner based on flip result and team choice
+  IF flip_result = game_data.team_choice THEN
+    winner_id := game_data.player1_id; -- Creator wins
   ELSE
-    winner_id := user_id;
+    winner_id := user_id; -- Joiner wins
   END IF;
   
   -- Update game
@@ -147,7 +157,8 @@ BEGIN
   -- Prepare result
   SELECT json_build_object(
     'winner_id', winner_id,
-    'amount', wager_amount * 2
+    'amount', wager_amount * 2,
+    'flip_result', flip_result
   ) INTO result;
   
   RETURN result;

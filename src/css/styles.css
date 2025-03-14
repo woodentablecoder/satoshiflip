@@ -232,15 +232,50 @@ body, html {
 /* Active wagers container */
 #active-wagers-container {
   transition: background-color 0.5s ease;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 15px;
+  padding: 1rem;
+  background-color: #1d1d1d;
+  border: 2px solid #ffffff1f;
+  border-radius: 5px;
 }
 
-#active-wagers-container {
-  background-color: #1D1D1D;
-  border: 2px solid #ffffff1f;
-  padding: 10px;
-  border-radius: 5px;
-  color: white;
-  min-width: 0;
+/* Game card styling */
+.game-card {
+  background-color: transparent;
+  border: 2px solid #ff0000;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  aspect-ratio: 1;
+}
+
+.game-card:hover {
+  border-color: #ff6b6b;
+}
+
+
+/* Responsive grid adjustments */
+@media (max-width: 1536px) {
+  #active-wagers-container {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 1280px) {
+  #active-wagers-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  #active-wagers-container {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Animation for refreshing games */
