@@ -217,7 +217,32 @@ body, html {
   font-family: 'GohuFont', monospace;
   color: rgba(255, 255, 255, 0.147);
 }
+.coin-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;  
+  gap: 10px;
+  margin-bottom: 15px;
+}
 
+
+#heads-btn {
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  flex: 1;
+}
+
+#tails-btn {
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  flex: 1;
+}
 
 /* Chat section */
 #chat-messages {

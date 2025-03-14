@@ -62,7 +62,8 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- RPC function to create a game
-CREATE OR REPLACE FUNCTION create_game(user_id UUID, amount BIGINT, team TEXT)
+DROP FUNCTION IF EXISTS public.create_game;
+CREATE OR REPLACE FUNCTION public.create_game(user_id UUID, amount BIGINT, team_choice TEXT)
 RETURNS UUID AS $$
 DECLARE
   game_id UUID;
@@ -73,7 +74,7 @@ BEGIN
   END IF;
 
   -- Validate team choice
-  IF team NOT IN ('heads', 'tails') THEN
+  IF team_choice NOT IN ('heads', 'tails') THEN
     RAISE EXCEPTION 'Invalid team choice. Must be heads or tails.';
   END IF;
 
@@ -86,7 +87,7 @@ BEGIN
   
   -- Create game
   INSERT INTO games (player1_id, wager_amount, team_choice, status)
-  VALUES (user_id, amount, team, 'pending')
+  VALUES (user_id, amount, team_choice, 'pending')
   RETURNING id INTO game_id;
   
   RETURN game_id;

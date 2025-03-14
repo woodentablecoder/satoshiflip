@@ -222,7 +222,7 @@ export async function createGame(userId, wagerAmount, teamChoice) {
     const { data, error } = await supabase.rpc('create_game', {
       user_id: userId,
       amount: wagerAmount,
-      team: teamChoice
+      team_choice: teamChoice
     });
     
     if (error) throw error;
