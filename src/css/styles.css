@@ -49,36 +49,95 @@ body, html {
   margin-bottom: 30px;
 }
 
-#deposit-btn {
-  background-color: #79FF6A;
+.button-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+}
+
+#home-btn {
+  background-color: #1D1D1D;
   color: white;
   border: none;
   padding: 10px 20px;
   border-radius: 5px;
   cursor: pointer;
   width: 60px;
+  height: 100%;
   transition: all 0.2s ease-in-out;
+  border: 2px solid #ffffff1f;
+}
+
+#home-btn:hover {
+  background-color: rgb(50, 50, 50);
+  transform: scale(1.02);
+}
+
+#deposit-btn {
+  background-color: #1D1D1D;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 60px;
+  height: 100%;
+  transition: all 0.2s ease-in-out;
+  border: 2px solid #ffffff1f;
 }
 
 #deposit-btn:hover {
-  background-color: #68ea5a;
+  background-color: #62ff51;
   transform: scale(1.02);
 }
 
 #withdraw-btn {
-  background-color: #FF6A6A;
+  background-color: #1D1D1D;
   color: white;
   border: none;
   padding: 10px 20px;
   border-radius: 5px;
   cursor: pointer;
-  box-sizing: border-box;
   width: 60px;
+  height: 100%;
+  transition: all 0.2s ease-in-out;
+  border: 2px solid #ffffff1f;
 }
 
 #withdraw-btn:hover {
-  background-color: #fb5959;
+  background-color: rgb(254, 99, 99);
   transform: scale(1.02);
+}
+
+.wager-amount-input {
+  width: 100%;
+  background-color: #1D1D1D;
+  border: 2px solid #ffffff1f;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  color: white;
+}
+
+.create-game-btn {
+  background-color: #1D1D1D;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 100%;
+  height: 60px;
+  transition: all 0.2s ease-in-out;
+  border: 2px solid #ffffff1f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.create-game-btn:hover {
+  background-color: #62ff51;
 }
 
 /* Chat section */

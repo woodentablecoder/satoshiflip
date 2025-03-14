@@ -18,18 +18,20 @@
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
         <div class="w-1/5 bg-[#161616] border-r border-gray-700 p-4 flex flex-col h-full"> <!-- Changed sidebar color to #0C171A -->
-            <div class="mb-4">
-                <h1 class="text-2xl font-bold text-yellow-500">SatoshiFlip</h1>
-                <p class="text-gray-400 text-sm">Bitcoin Coinflip Game</p>
-            </div>
+
             
             <!-- Top buttons in 4-column layout (blue section in image) -->
             <div class="balance-grid">
-                <button id="explicit-auth-btn" class="px-2 py-2 bg-[#1D1D1D] hover:bg-purple-700 rounded transition text-s font-bold">
+                <div class="button-container">
+                <button id="home-btn">
+                    <img src="public/images/home.svg" alt="Withdraw" style="filter: brightness(0) invert(1);">
+                </button>
+                <button id="explicit-auth-btn" class="px-2 py-2 bg-[#1D1D1D] hover:bg-[rgb(50,50,50)] hover:scale-[1.02] rounded transition text-s font-bold border-[2px] border-[#ffffff1f]">
                     Profile
                 </button>
+            </div>
                 <div></div> <!-- Empty space for the 2nd column -->
-                <div>
+                <div class="button-container">
                 <button id="deposit-btn">
                     <img class="deposit-color" src="public/images/arrow-down.svg" alt="Deposit" style="filter: brightness(0) invert(1);">
                 </button>
@@ -49,15 +51,15 @@
                 <input 
                     type="number" 
                     id="wager-amount" 
-                    class="w-full bg-gray-700 border border-gray-600 p-2 rounded text-white mb-2"
-                    placeholder="Satoshis"
+                    class="wager-amount-input"
+                    placeholder="₿ 000 000 000"
                     min="100"
                     max="100000000"
                 >
                 <button 
                     id="create-game-btn" 
-                    class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded transition">
-                    Create Game
+                    class="create-game-btn">
+                    <img src="public/images/check.svg" alt="Create" style="filter: brightness(0);">
                 </button>
             </div>
             
@@ -68,7 +70,7 @@
         <!-- Main content area -->
         <div class="flex-1 flex flex-col overflow-hidden bg-[#161616]">
             <!-- Message of the day banner -->
-            <div class="bg-[#FF8400] border-b border-gray-700 p-3 text-center text-white font-extrabold text-lg"> <!-- Changed message of the day color to #182022 -->
+            <div class="bg-[#222222] border-b border-gray-700 p-3 text-center text-white font-extrabold text-lg"> <!-- Changed message of the day color to #182022 -->
                 <p>Follow @satoshiflip on X for updates and giveaways!</p>
             </div>
             

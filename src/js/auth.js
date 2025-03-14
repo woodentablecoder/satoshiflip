@@ -108,6 +108,12 @@ export function initAuth() {
         const userDisplayElements = document.querySelectorAll('.user-display-name');
         userDisplayElements.forEach(el => el.textContent = newDisplayName);
         
+        // Update the Account button text
+        const explicitAuthBtn = document.getElementById('explicit-auth-btn');
+        if (explicitAuthBtn) {
+          explicitAuthBtn.textContent = newDisplayName;
+        }
+        
       } catch (error) {
         console.error('Error updating display name:', error);
         authError.textContent = 'Failed to update display name: ' + (error.message || 'Unknown error');
@@ -379,7 +385,24 @@ async function updateUIForAuthState(isLoggedIn) {
   // Show/hide auth button
   const explicitAuthBtn = document.getElementById('explicit-auth-btn');
   if (explicitAuthBtn) {
-    explicitAuthBtn.textContent = isLoggedIn ? 'Account' : 'Login / Sign Up';
+    if (isLoggedIn) {
+      // Get user's display name
+      const supabase = (await import('./supabase.js')).default;
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (user) {
+        const { data: userData, error: userDataError } = await supabase
+          .from('users')
+          .select('display_name')
+          .eq('id', user.id)
+          .single();
+          
+        explicitAuthBtn.textContent = userData?.display_name || 'Account';
+      } else {
+        explicitAuthBtn.textContent = 'Account';
+      }
+    } else {
+      explicitAuthBtn.textContent = 'Login / Sign Up';
+    }
   }
   
   // Show/hide login/signup forms and user info
@@ -456,6 +479,12 @@ async function updateUIForAuthState(isLoggedIn) {
           const userDisplayElements = document.querySelectorAll('.user-display-name');
           userDisplayElements.forEach(el => el.textContent = newDisplayName);
           
+          // Update the Account button text
+          const explicitAuthBtn = document.getElementById('explicit-auth-btn');
+          if (explicitAuthBtn) {
+            explicitAuthBtn.textContent = newDisplayName;
+          }
+          
         } catch (error) {
           console.error('Error updating display name:', error);
           authError.textContent = 'Failed to update display name: ' + (error.message || 'Unknown error');
@@ -489,7 +518,7 @@ async function updateUIForAuthState(isLoggedIn) {
       wagerInput.placeholder = 'Login to play';
     } else {
       createGameBtn.classList.remove('opacity-50');
-      wagerInput.placeholder = 'Satoshis';
+      wagerInput.placeholder = '₿ 000 000 000';
     }
   }
   
