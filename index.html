@@ -64,7 +64,47 @@
                 </button>
             </div>
             
-            <!-- Chat Box removed -->
+            <!-- Chat Box -->
+            <div class="flex-1 flex flex-col mt-4 bg-[#1D1D1D] rounded-lg overflow-hidden">
+                <div class="p-3 border-b border-gray-700">
+                    <h3 class="text-white font-mono">CHAT</h3>
+                </div>
+                <div id="chat-messages" class="flex-1 overflow-y-auto p-3 space-y-3" style="max-height: calc(100vh - 400px);">
+                    <!-- Messages will be inserted here by JavaScript -->
+                </div>
+                <div class="p-3 border-t border-gray-700">
+                    <div class="flex gap-2">
+                        <input 
+                            type="text" 
+                            id="chat-input" 
+                            class="flex-1 bg-[#161616] text-white rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                            placeholder="Type a message..."
+                        >
+                        <button 
+                            id="send-message-btn"
+                            class="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded transition"
+                        >
+                            <img src="public/images/send.svg" alt="Send" style="filter: brightness(0);" class="w-4 h-4">
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <button 
+                            id="tip-btn"
+                            class="text-sm text-yellow-500 hover:text-yellow-400 flex items-center gap-1"
+                        >
+                            <span id="btc-logo-chat" style="color: #F7931A">₿</span> Tip
+                        </button>
+                        <input 
+                            type="number" 
+                            id="tip-amount" 
+                            class="w-24 bg-[#161616] text-white rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                            placeholder="Amount"
+                            min="100"
+                            max="1000000"
+                        >
+                    </div>
+                </div>
+            </div>
             
         </div>
         

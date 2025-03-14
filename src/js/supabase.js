@@ -244,7 +244,6 @@ export async function getActiveGames() {
       .select(`
         id,
         wager_amount,
-        team_choice,
         created_at,
         player1_id,
         player1:player1_id (email)
@@ -279,7 +278,6 @@ export async function getActiveGames() {
         playerId: game.player1_id,
         playerName: username,
         wagerAmount: game.wager_amount,
-        teamChoice: game.team_choice,
         createdAt: new Date(game.created_at)
       };
     }).filter(game => game !== null); // Remove any null entries
