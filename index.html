@@ -8,41 +8,43 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Custom styles -->
     <link rel="stylesheet" href="src/css/styles.css">
+    <link rel="stylesheet" href="src/css/layout.css">
     <!-- Bitcoin icon from FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Font called "Recursive" from google APIs-->
+    <link href="https://fonts.googleapis.com/css2?family=Recursive&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-900 text-white">
+<body class="bg-[#182022] text-white"> <!-- Changed background color to #132E32 -->
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
-        <div class="w-1/5 bg-gray-800 border-r border-gray-700 p-4 flex flex-col">
-            <div class="mb-8">
+        <div class="w-1/5 bg-[#0C171A] border-r border-gray-700 p-4 flex flex-col h-full"> <!-- Changed sidebar color to #0C171A -->
+            <div class="mb-4">
                 <h1 class="text-2xl font-bold text-yellow-500">SatoshiFlip</h1>
                 <p class="text-gray-400 text-sm">Bitcoin Coinflip Game</p>
             </div>
             
-            <div class="mb-4">
-                <button id="explicit-auth-btn" class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded transition">
-                    Login / Sign Up
+            <!-- Top buttons in 4-column layout (blue section in image) -->
+            <div class="grid grid-cols-4 gap-1 mb-4">
+                <button id="explicit-auth-btn" class="px-2 py-2 bg-purple-600 hover:bg-purple-700 rounded transition text-xs font-bold">
+                    Account
+                </button>
+                <div></div> <!-- Empty space for the 2nd column -->
+                <button class="px-2 py-2 bg-green-600 hover:bg-green-700 rounded transition text-xs font-bold" id="deposit-btn">
+                    Deposit
+                </button>
+                <button class="px-2 py-2 bg-red-600 hover:bg-red-700 rounded transition text-xs font-bold" id="withdraw-btn">
+                    Withdraw
                 </button>
             </div>
             
-            <div class="mb-8">
+            <div class="mb-4">
                 <div class="mb-2 text-yellow-500">
                     <i class="fas fa-bitcoin mr-2"></i>Balance
                 </div>
                 <div class="text-2xl font-mono" id="user-balance">₿ 0</div>
             </div>
             
-            <div class="mb-8">
-                <button class="w-full mb-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded transition" id="deposit-btn">
-                    Deposit
-                </button>
-                <button class="w-full px-4 py-2 bg-red-600 hover:bg-red-700 rounded transition" id="withdraw-btn">
-                    Withdraw
-                </button>
-            </div>
-            
-            <div class="mb-8">
+            <div class="mb-4">
                 <div class="mb-2 text-yellow-500">Create Wager</div>
                 <input 
                     type="number" 
@@ -59,15 +61,15 @@
                 </button>
             </div>
             
-            <!-- Chat Box -->
-            <div class="mb-8 flex-grow flex flex-col">
+            <!-- Chat Box (taking remaining space - yellow section in image) -->
+            <div class="flex-1 flex flex-col h-full">
                 <div class="mb-2 text-yellow-500">
                     <span>Public Chat</span>
                 </div>
-                <div id="chat-messages" class="bg-gray-700 border border-gray-600 rounded p-2 overflow-y-auto h-64 mb-2 text-sm">
+                <div id="chat-messages" class="flex-1 bg-gray-700 border border-gray-600 rounded p-2 overflow-y-auto mb-2 text-sm">
                     <!-- Messages will be populated here -->
                 </div>
-                <div class="flex">
+                <div class="flex mt-auto">
                     <input 
                         type="text" 
                         id="chat-input" 
@@ -81,23 +83,19 @@
                     </button>
                 </div>
             </div>
-            
-            <div class="mt-auto text-xs text-gray-500">
-                <p>1.00000000 BTC = ₿ 100 000 000</p>
-            </div>
         </div>
         
         <!-- Main content area -->
         <div class="flex-1 flex flex-col overflow-hidden">
             <!-- Message of the day banner -->
-            <div class="bg-gray-800 border-b border-gray-700 p-3 text-center text-red-500">
-                <p>Welcome to SatoshiFlip! The hottest Bitcoin coinflip game. Play responsibly.</p>
+            <div class="bg-[#FF8400] border-b border-gray-700 p-3 text-center text-white font-extrabold text-lg"> <!-- Changed message of the day color to #182022 -->
+                <p>Follow @satoshiflip on X for updates and giveaways!</p>
             </div>
             
             <!-- List of active wagers -->
             <div class="container mx-auto p-6">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-3xl font-bold text-cyan-400">ACTIVE WAGERS</h2>
+                    <h2 class="text-xl font-bold text-white">ACTIVE WAGERS</h2>
                     <button id="refresh-games-btn" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-white flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -226,7 +224,7 @@
         <div class="bg-gray-800 p-6 rounded-lg w-full max-w-md">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl text-white font-bold" id="transaction-title">Deposit Bitcoin</h2>
-                <button id="close-transaction-modal" class="text-gray-400 hover:text-white">
+                <button id="close-transaction-modal" class="text-red-500 hover:text-red-400">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -236,12 +234,12 @@
             <div id="deposit-container">
                 <p class="text-gray-300 mb-4">Deposit Bitcoin to your SatoshiFlip account:</p>
                 <div class="bg-gray-700 p-4 rounded mb-4">
-                    <p class="text-sm text-gray-400 mb-2">Send BTC to this address:</p>
-                    <div class="font-mono text-white break-all" id="deposit-address">
+                    <p class="deposit-bitcoin-text text-sm text-gray-400 mb-2">Send BTC to this address:</p>
+                    <div class="deposit-bitcoin-text font-mono text-white break-all" id="deposit-address">
                         1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa
                     </div>
                 </div>
-                <p class="text-yellow-500 text-sm">Your balance will be updated automatically after confirmation.</p>
+                <p class="deposit-bitcoin-text text-yellow-500 text-sm">Your balance will be updated automatically after confirmation.</p>
             </div>
             
             <div id="withdraw-container" class="hidden">

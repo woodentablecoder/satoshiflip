@@ -1,5 +1,44 @@
 /* Custom styles for SatoshiFlip */
+/* Global font setting */
+body, html {
+  font-family: 'Recursive', monospace;
+}
 
+#refresh-games-btn { /* Refresh button */
+  background-color: #ffaa00;
+}
+
+.text-gray-300 { /* Deposit to your SatoshiFlip account: */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.text-gray-400 {
+   color: red;
+}
+
+.deposit-bitcoin-text {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Sidebar layout */
+.w-1/5 {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Chat section */
+#chat-messages {
+  min-height: 200px;
+  max-height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
 
 /* Active wagers container */
 #active-wagers-container {
@@ -100,6 +139,3 @@
     }
 } 
 
-#refresh-games-btn { /* Refresh button */
-  background-color: #ffaa00;
-}
