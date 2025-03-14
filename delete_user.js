@@ -60,18 +60,6 @@ async function deleteUser() {
       console.log('Successfully deleted joined games');
     }
     
-    // Delete user chat messages
-    const chatResult = await supabase
-      .from('chat_messages')
-      .delete()
-      .eq('user_id', userIdToDelete);
-    
-    if (chatResult.error) {
-      console.error('Error deleting chat messages:', chatResult.error.message);
-    } else {
-      console.log('Successfully deleted chat messages');
-    }
-    
     console.log('User deletion process completed');
   } catch (error) {
     console.error('Unexpected error during user deletion:', error.message);

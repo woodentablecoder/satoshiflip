@@ -1,5 +1,23 @@
 {
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1"
-  }
+  },
+  "name": "satoshiflip",
+  "description": "A web-based Bitcoin coinflip game where users can bet Bitcoin in 50/50 coinflip contests.",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/woodentablecoder/satoshiflip.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/woodentablecoder/satoshiflip/issues"
+  },
+  "homepage": "https://github.com/woodentablecoder/satoshiflip#readme"
 }

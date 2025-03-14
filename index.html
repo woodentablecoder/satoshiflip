@@ -17,35 +17,35 @@
 <body class="bg-[#182022] text-white"> <!-- Changed background color to #132E32 -->
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
-        <div class="w-1/5 bg-[#0C171A] border-r border-gray-700 p-4 flex flex-col h-full"> <!-- Changed sidebar color to #0C171A -->
+        <div class="w-1/5 bg-[#161616] border-r border-gray-700 p-4 flex flex-col h-full"> <!-- Changed sidebar color to #0C171A -->
             <div class="mb-4">
                 <h1 class="text-2xl font-bold text-yellow-500">SatoshiFlip</h1>
                 <p class="text-gray-400 text-sm">Bitcoin Coinflip Game</p>
             </div>
             
             <!-- Top buttons in 4-column layout (blue section in image) -->
-            <div class="grid grid-cols-4 gap-1 mb-4">
-                <button id="explicit-auth-btn" class="px-2 py-2 bg-purple-600 hover:bg-purple-700 rounded transition text-xs font-bold">
-                    Account
+            <div class="balance-grid">
+                <button id="explicit-auth-btn" class="px-2 py-2 bg-[#1D1D1D] hover:bg-purple-700 rounded transition text-s font-bold">
+                    Profile
                 </button>
                 <div></div> <!-- Empty space for the 2nd column -->
-                <button class="px-2 py-2 bg-green-600 hover:bg-green-700 rounded transition text-xs font-bold" id="deposit-btn">
-                    Deposit
+                <div>
+                <button id="deposit-btn">
+                    <img class="deposit-color" src="public/images/arrow-down.svg" alt="Deposit" style="filter: brightness(0) invert(1);">
                 </button>
-                <button class="px-2 py-2 bg-red-600 hover:bg-red-700 rounded transition text-xs font-bold" id="withdraw-btn">
-                    Withdraw
+                <button id="withdraw-btn">
+                    <img src="public/images/arrow-up.svg" alt="Withdraw" style="filter: brightness(0) invert(1);">
                 </button>
+            </div>
             </div>
             
             <div class="mb-4">
-                <div class="mb-2 text-yellow-500">
-                    <i class="fas fa-bitcoin mr-2"></i>Balance
+                <div class="flex justify-between items-center mb-2">
+                    <div class="create-wager">Create Wager</div>
+                    <div class="user-balance" id="user-balance">
+                        <span id="btc-logo" style="color: #F7931A">₿</span> <span style="color: white">0</span>
+                    </div>
                 </div>
-                <div class="text-2xl font-mono" id="user-balance">₿ 0</div>
-            </div>
-            
-            <div class="mb-4">
-                <div class="mb-2 text-yellow-500">Create Wager</div>
                 <input 
                     type="number" 
                     id="wager-amount" 
@@ -61,32 +61,12 @@
                 </button>
             </div>
             
-            <!-- Chat Box (taking remaining space - yellow section in image) -->
-            <div class="flex-1 flex flex-col h-full">
-                <div class="mb-2 text-yellow-500">
-                    <span>Public Chat</span>
-                </div>
-                <div id="chat-messages" class="flex-1 bg-gray-700 border border-gray-600 rounded p-2 overflow-y-auto mb-2 text-sm">
-                    <!-- Messages will be populated here -->
-                </div>
-                <div class="flex mt-auto">
-                    <input 
-                        type="text" 
-                        id="chat-input" 
-                        class="flex-grow bg-gray-700 border border-gray-600 p-2 rounded-l text-white"
-                        placeholder="Type a message..."
-                    >
-                    <button 
-                        id="send-message" 
-                        class="px-3 py-2 bg-green-600 hover:bg-green-700 rounded-r text-white">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </div>
-            </div>
+            <!-- Chat Box removed -->
+            
         </div>
         
         <!-- Main content area -->
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex-1 flex flex-col overflow-hidden bg-[#161616]">
             <!-- Message of the day banner -->
             <div class="bg-[#FF8400] border-b border-gray-700 p-3 text-center text-white font-extrabold text-lg"> <!-- Changed message of the day color to #182022 -->
                 <p>Follow @satoshiflip on X for updates and giveaways!</p>
@@ -212,6 +192,20 @@
             <!-- User info when logged in -->
             <div id="user-info" class="hidden">
                 <p class="text-gray-300 mb-4">Logged in as: <span id="user-email" class="text-white font-semibold"></span></p>
+                <div class="mb-6">
+                    <label class="block text-gray-300 text-sm font-bold mb-2" for="display-name">
+                        Display Name
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="text" id="display-name-input" 
+                            class="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:shadow-outline"
+                            placeholder="Enter display name">
+                        <button id="save-display-name" 
+                            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                            Save
+                        </button>
+                    </div>
+                </div>
                 <button id="logout-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">
                     Logout
                 </button>

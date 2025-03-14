@@ -11,20 +11,12 @@
   border-width: 2px;
 }
 
-/* Chat section - yellow bordered box */
+/* Yellow border styling */
 .border-yellow-500 {
   border-width: 2px;
 }
 
-/* Chat messages container */
-#chat-messages {
-  min-height: 200px;
-  max-height: 100%;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
+/* Chat messages container - removed */
 
 /* Button grid layout */
 .grid-cols-4 {

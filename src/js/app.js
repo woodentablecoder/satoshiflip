@@ -19,7 +19,6 @@ import {
 } from './supabase.js';
 import auth from './auth.js';
 import transactions from './transactions.js';
-import chat from './chat.js';
 
 console.log('Imports successful');
 
@@ -37,9 +36,6 @@ try {
         const resultText = document.getElementById('result');
         const closeModalBtn = document.getElementById('close-modal');
         const userBalanceDisplay = document.getElementById('user-balance');
-        const chatMessages = document.getElementById('chat-messages');
-        const chatInput = document.getElementById('chat-input');
-        const sendMessageBtn = document.getElementById('send-message');
         
         // Initialize auth and transactions
         console.log('Initializing auth module');
@@ -52,7 +48,7 @@ try {
         
         // Format satoshis to readable format with spaces
         const formatSatoshis = (amount) => {
-            return '₿ ' + amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+            return `<span id="btc-logo" style="color: #F7931A">₿</span> <span style="color: white">${amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}</span>`;
         };
         
         // Format relative time
@@ -115,12 +111,22 @@ try {
         
         // Render active games
         const renderGames = async () => {
+            // Clear the container first
             wagersContainer.innerHTML = '';
+            
+            // Check if there are any games to display
+            if (!activeGames || activeGames.length === 0) {
+                wagersContainer.innerHTML = '<p class="text-gray-300">No active wagers available. Create one!</p>';
+                return;
+            }
             
             // Get current user to identify their games
             const currentUser = await getCurrentUser();
             
             activeGames.forEach(game => {
+                // Skip any null entries that might have sneaked in
+                if (!game) return;
+                
                 const gameCard = document.createElement('div');
                 gameCard.className = 'bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-yellow-500 transition';
                 
@@ -167,20 +173,38 @@ try {
                 gameCard.appendChild(buttonContainer);
                 wagersContainer.appendChild(gameCard);
             });
-            
-            // Remove individual event listeners - we now use event delegation in setupEventListeners
         };
         
         // Load active games from Supabase
         const loadActiveGames = async () => {
             try {
-                // For polling updates, we'll check if the list has changed before showing the refresh indicator
-                const isPoll = !wagersContainer.innerHTML.includes('Refreshing');
+                if (!wagersContainer) {
+                    console.error('Cannot load games: wagers container not found in DOM');
+                    return false;
+                }
                 
+                // Add loading indicator if not a background poll
+                const isBackgroundPoll = !wagersContainer.innerHTML.includes('Refreshing') && 
+                                        activeGames.length > 0;
+                
+                if (!isBackgroundPoll) {
+                    wagersContainer.innerHTML = '<p class="text-gray-400">Refreshing wagers...</p>';
+                }
+                
+                // Get games from API
                 const games = await getActiveGames();
                 
+                // Log detailed game information for debugging
+                console.log(`Received ${games ? games.length : 0} games from API after filtering out invalid entries`);
+                
+                if (!games || !Array.isArray(games)) {
+                    console.error('Invalid response from getActiveGames:', games);
+                    wagersContainer.innerHTML = '<p class="text-red-400">Error loading wagers. Please refresh the page.</p>';
+                    return false;
+                }
+                
                 // Check if the games list has actually changed before updating the UI
-                const hasChanged = isPoll && (
+                const hasChanged = isBackgroundPoll && (
                     // Different number of games
                     activeGames.length !== games.length ||
                     // Or different game IDs
@@ -188,39 +212,66 @@ try {
                     JSON.stringify(games.map(g => g.id).sort())
                 );
                 
-                // Only update the UI if this is not a poll or if data has changed
-                if (!isPoll || hasChanged) {
-                    console.log('Games list changed, updating UI');
-                    activeGames = games;
-                    await renderGames();
+                // Always update the internal data
+                activeGames = games;
+                
+                // Only update the UI if this is not a background poll or if data has changed
+                if (!isBackgroundPoll || hasChanged) {
+                    console.log('Games list changed, updating UI with', games.length, 'games');
                     
-                    // Only add the flash effect if there was an actual change
+                    // Empty the container first
+                    wagersContainer.innerHTML = '';
+                    
+                    if (games.length === 0) {
+                        // No games to display
+                        wagersContainer.innerHTML = '<p class="text-gray-300">No active wagers available. Create one!</p>';
+                    } else {
+                        // Render the games
+                        await renderGames();
+                    }
+                    
+                    // Only add the flash effect if there was an actual change in a background poll
                     if (hasChanged) {
                         // Add a subtle flash effect to the container to highlight the update
                         wagersContainer.classList.add('bg-cyan-900', 'bg-opacity-10');
                         setTimeout(() => {
                             wagersContainer.classList.remove('bg-cyan-900', 'bg-opacity-10');
                         }, 500);
+                        
+                        // Show a notification for updated list
+                        showToast('Wager list has been updated', 'info');
                     }
-                } else if (isPoll) {
+                } else if (isBackgroundPoll) {
                     // Silent update of the data if polling didn't detect changes
-                    activeGames = games;
                     console.log('Polling detected no changes in games list');
                 }
+                
+                return true;
             } catch (error) {
                 console.error('Failed to load active games:', error);
-                wagersContainer.innerHTML = '<p class="text-red-400">Error loading wagers. Please try again later.</p>';
+                
+                // Only update UI if it's not a background poll
+                if (wagersContainer && !wagersContainer.innerHTML.includes('Refreshing')) {
+                    wagersContainer.innerHTML = '<p class="text-red-400">Error loading wagers. Please try again later.</p>';
+                }
+                
+                return false;
             }
         };
         
         // Update user balance display
         const updateBalanceDisplay = async () => {
-            const user = await getCurrentUser();
-            if (user) {
+            try {
+                const user = await getCurrentUser();
+                if (!user) {
+                    userBalanceDisplay.innerHTML = `<span id="btc-logo" style="color: #F7931A">₿</span> <span style="color: white">0</span>`;
+                    return;
+                }
                 const balance = await getUserBalance(user.id);
-                userBalanceDisplay.textContent = formatSatoshis(balance);
-            } else {
-                userBalanceDisplay.textContent = '₿ 0';
+                userBalanceDisplay.innerHTML = formatSatoshis(balance);
+            } catch (error) {
+                console.error('Error updating balance:', error);
+                userBalanceDisplay.innerHTML = `<span id="btc-logo" style="color: #F7931A">₿</span> <span style="color: white">0</span>`;
             }
         };
         
@@ -232,25 +283,6 @@ try {
                 // Initialize Supabase listener for games
                 const gameChannel = subscribeToActiveGames(handleGameUpdate);
                 console.log('Supabase games subscription set up:', gameChannel);
-                
-                // Initialize Supabase listener for chat messages
-                const chatChannel = chat.subscribeToChatMessages(handleNewChatMessage);
-                console.log('Supabase chat subscription set up:', chatChannel);
-                
-                // Set up periodic check to ensure chat subscription is active
-                const chatSubscriptionCheck = setInterval(() => {
-                    if (chatChannel?.subscription?.state !== 'SUBSCRIBED') {
-                        console.log('Chat subscription not active, resubscribing...');
-                        try {
-                            chatChannel?.subscribe();
-                        } catch (e) {
-                            console.error('Error resubscribing to chat:', e);
-                        }
-                    }
-                }, 30000); // Check every 30 seconds
-                
-                // Store interval ID in window to clean up later if needed
-                window.chatSubscriptionCheckInterval = chatSubscriptionCheck;
                 
                 return true;
             } catch (error) {
@@ -264,62 +296,97 @@ try {
         const handleGameUpdate = async (payload) => {
             console.log('Game update received:', payload);
             
-            // Special handling for completed games first
-            if (payload.eventType === 'UPDATE' && 
-                payload.new && 
-                payload.new.status === 'completed') {
-                
-                const gameId = payload.new.id;
-                console.log('✅ COMPLETED GAME DETECTED - ID:', gameId);
-                
-                // Get current user
-                const user = await getCurrentUser();
-                if (user) {
-                    // Check if current user is involved in this game
-                    const currentUserId = String(user.id);
-                    const player1Id = String(payload.new.player1_id || '');
-                    const player2Id = String(payload.new.player2_id || '');
-                    const winnerId = String(payload.new.winner_id || '');
-                    
-                    console.log(`Game participants:
-                        Current user ID: ${currentUserId}
-                        Player1 ID: ${player1Id}
-                        Player2 ID: ${player2Id}
-                        Winner ID: ${winnerId}`);
-                    
-                    const isUserInGame = (currentUserId === player1Id || currentUserId === player2Id);
-                    
-                    if (isUserInGame) {
-                        const isWinner = (currentUserId === winnerId);
-                        console.log('User is in game! Is winner?', isWinner);
-                        
-                        // Show the coinflip animation
-                        showCoinflip(isWinner);
-                        
-                        // Update balance after game completes
-                        updateBalanceDisplay();
-                    }
+            try {
+                // Validate payload data to avoid issues with incomplete data
+                if (!payload || !payload.eventType) {
+                    console.error('Invalid payload received in handleGameUpdate:', payload);
+                    return;
                 }
-            } else if (payload.eventType === 'UPDATE' && 
-                       payload.new && 
-                       payload.new.status === 'active' && 
-                       payload.new.player2_id) {
                 
-                // Handle newly joined games for creator
-                const user = await getCurrentUser();
-                if (user) {
-                    const currentUserId = String(user.id);
-                    const player1Id = String(payload.new.player1_id || '');
+                // Check if this is a game with missing user data (foreign key issue)
+                const hasForeignKeyIssue = payload.new && 
+                                           payload.new.player1_id && 
+                                           typeof payload.new.player1_id === 'string' &&
+                                           payload.new.player1_id.includes('deleted');
+                
+                if (hasForeignKeyIssue) {
+                    console.warn(`Skipping update for game with foreign key issue: ${payload.new?.id}`);
+                    // Still refresh the list to ensure UI consistency
+                    await loadActiveGames();
+                    return;
+                }
+                
+                // Always refresh the games list on any update to ensure UI consistency
+                await loadActiveGames();
+                
+                // Special handling for completed games
+                if (payload.eventType === 'UPDATE' && 
+                    payload.new && 
+                    payload.new.status === 'completed') {
                     
-                    // If current user is the creator (player1) and this is a new join
-                    if (currentUserId === player1Id) {
-                        showToast('Another player has joined your game! Coinflip starting...', 'success');
+                    const gameId = payload.new.id;
+                    console.log('✅ COMPLETED GAME DETECTED - ID:', gameId);
+                    
+                    // Get current user
+                    const user = await getCurrentUser();
+                    if (user) {
+                        // Check if current user is involved in this game
+                        const currentUserId = String(user.id);
+                        const player1Id = String(payload.new.player1_id || '');
+                        const player2Id = String(payload.new.player2_id || '');
+                        const winnerId = String(payload.new.winner_id || '');
+                        
+                        console.log(`Game participants:
+                            Current user ID: ${currentUserId}
+                            Player1 ID: ${player1Id}
+                            Player2 ID: ${player2Id}
+                            Winner ID: ${winnerId}`);
+                        
+                        const isUserInGame = (currentUserId === player1Id || currentUserId === player2Id);
+                        
+                        if (isUserInGame) {
+                            const isWinner = (currentUserId === winnerId);
+                            console.log('User is in game! Is winner?', isWinner);
+                            
+                            // Show the coinflip animation
+                            showCoinflip(isWinner);
+                            
+                            // Update balance after game completes
+                            updateBalanceDisplay();
+                        }
                     }
+                } else if (payload.eventType === 'UPDATE' && 
+                           payload.new && 
+                           payload.new.status === 'active' && 
+                           payload.new.player2_id) {
+                    
+                    // Handle newly joined games for creator
+                    const user = await getCurrentUser();
+                    if (user) {
+                        const currentUserId = String(user.id);
+                        const player1Id = String(payload.new.player1_id || '');
+                        
+                        // If current user is the creator (player1) and this is a new join
+                        if (currentUserId === player1Id) {
+                            showToast('Another player has joined your game! Coinflip starting...', 'success');
+                        }
+                    }
+                } else if (payload.eventType === 'INSERT') {
+                    // New game created
+                    showToast('New wager available!', 'info');
+                } else if (payload.eventType === 'DELETE') {
+                    // Game deleted/cancelled
+                    showToast('A wager was cancelled', 'info');
+                }
+            } catch (error) {
+                console.error('Error handling game update:', error);
+                // Fallback - always try to refresh the games list
+                try {
+                    await loadActiveGames();
+                } catch (e) {
+                    console.error('Failed to refresh games after error:', e);
                 }
             }
-            
-            // Always refresh the game list on updates
-            await loadActiveGames();
         };
         
         // Handle join game
@@ -619,67 +686,87 @@ try {
         
         // Event listeners
         const setupEventListeners = () => {
-            // Set up event listeners for UI buttons
-            if (createGameBtn) {
-                createGameBtn.addEventListener('click', handleCreateGame);
-            } else {
-                console.error('Create game button not found in the DOM');
-            }
-            
-            // Change these global event listeners to more specific ones to avoid conflicts
-            // Instead of adding the event listeners to the entire document
-            // Add them only to the wagers container
-            if (wagersContainer) {
-                wagersContainer.addEventListener('click', (e) => {
-                    // For joining games
-                    if (e.target.classList.contains('join-game-btn')) {
-                        handleJoinGame(e);
-                    }
-                    
-                    // For cancelling games
-                    if (e.target.classList.contains('cancel-game-btn')) {
-                        handleCancelGame(e);
-                    }
-                });
-            }
-            
-            // Set up refresh button
-            const refreshBtn = document.getElementById('refresh-games-btn');
-            if (refreshBtn) {
-                refreshBtn.addEventListener('click', loadActiveGames);
-            }
-            
-            // Set up deposit/withdraw buttons
-            const depositBtn = document.getElementById('deposit-btn');
-            const withdrawBtn = document.getElementById('withdraw-btn');
-            
-            if (depositBtn) depositBtn.addEventListener('click', transactions.handleDeposit);
-            if (withdrawBtn) withdrawBtn.addEventListener('click', transactions.handleWithdraw);
-            
-            // Set up auth button
-            const authBtn = document.getElementById('explicit-auth-btn');
-            if (authBtn) {
-                authBtn.addEventListener('click', auth.showAuthModal);
-            }
-            
-            // Chat event listeners
-            if (sendMessageBtn) {
-                sendMessageBtn.addEventListener('click', sendMessage);
-            }
-            
-            if (chatInput) {
-                chatInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        sendMessage();
-                    }
-                });
-            }
-
-            // Modal close button
-            if (closeModalBtn) {
-                closeModalBtn.addEventListener('click', closeModal);
-            } else {
-                console.error('Close modal button not found in the DOM');
+            try {
+                console.log('Setting up event listeners');
+                
+                // Set up event listeners for UI buttons
+                if (createGameBtn) {
+                    createGameBtn.addEventListener('click', handleCreateGame);
+                    console.log('✓ Create game button listener attached');
+                } else {
+                    console.error('Create game button not found in the DOM');
+                }
+                
+                // Change these global event listeners to more specific ones to avoid conflicts
+                // Instead of adding the event listeners to the entire document
+                // Add them only to the wagers container
+                if (wagersContainer) {
+                    wagersContainer.addEventListener('click', (e) => {
+                        // Only handle clicks on join-game-btn elements
+                        if (e.target.classList.contains('join-game-btn') || 
+                            e.target.closest('.join-game-btn')) {
+                            handleJoinGame(e);
+                        }
+                        
+                        // Handle cancel game clicks
+                        if (e.target.classList.contains('cancel-game-btn') || 
+                            e.target.closest('.cancel-game-btn')) {
+                            handleCancelGame(e);
+                        }
+                    });
+                    console.log('✓ Wagers container delegated listener attached');
+                } else {
+                    console.error('Wagers container not found in the DOM');
+                }
+                
+                // Set up refresh button
+                const refreshBtn = document.getElementById('refresh-games-btn');
+                if (refreshBtn) {
+                    refreshBtn.addEventListener('click', loadActiveGames);
+                    console.log('✓ Refresh button listener attached');
+                } else {
+                    console.error('Refresh button not found in the DOM');
+                }
+                
+                // Set up deposit/withdraw buttons
+                const depositBtn = document.getElementById('deposit-btn');
+                const withdrawBtn = document.getElementById('withdraw-btn');
+                
+                if (depositBtn) {
+                    depositBtn.addEventListener('click', transactions.showDepositModal);
+                    console.log('✓ Deposit button listener attached');
+                } else {
+                    console.error('Deposit button not found in the DOM');
+                }
+                
+                if (withdrawBtn) {
+                    withdrawBtn.addEventListener('click', transactions.showWithdrawModal);
+                    console.log('✓ Withdraw button listener attached');
+                } else {
+                    console.error('Withdraw button not found in the DOM');
+                }
+                
+                // Set up auth button
+                const authBtn = document.getElementById('explicit-auth-btn');
+                if (authBtn) {
+                    authBtn.addEventListener('click', auth.showAuthModal);
+                    console.log('✓ Auth button listener attached');
+                } else {
+                    console.error('Auth button not found in the DOM');
+                }
+                
+                // Modal close button
+                if (closeModalBtn) {
+                    closeModalBtn.addEventListener('click', closeModal);
+                    console.log('✓ Close modal button listener attached');
+                } else {
+                    console.error('Close modal button not found in the DOM');
+                }
+                
+                console.log('All event listeners setup complete!');
+            } catch (error) {
+                console.error('Error setting up event listeners:', error);
+                showToast('There was an error initializing the application. Please refresh the page.', 'error');
             }
         };
         
@@ -688,14 +775,8 @@ try {
             if (e.detail.isLoggedIn) {
                 // User logged in
                 updateBalanceDisplay();
-                
-                // Store user ID for message styling
-                if (e.detail.user && e.detail.user.id) {
-                    localStorage.setItem('currentUserId', e.detail.user.id);
-                }
             } else {
-                // User logged out, remove stored ID
-                localStorage.removeItem('currentUserId');
+                // User logged out
             }
         });
         
@@ -704,227 +785,83 @@ try {
             updateBalanceDisplay();
         });
         
-        // Chat functions
-        const loadChatMessages = async () => {
-            try {
-                const { success, data, error } = await chat.getChatMessages();
-                
-                if (!success) {
-                    console.error('Error loading chat messages:', error);
-                    return;
-                }
-                
-                renderChatMessages(data);
-            } catch (error) {
-                console.error('Failed to load chat messages:', error);
-            }
-        };
-        
-        const renderChatMessages = (messages) => {
-            if (!chatMessages) return;
-            
-            // Clear existing messages if refreshing all
-            if (messages.length > 1) {
-                chatMessages.innerHTML = '';
-            }
-            
-            // Process each message
-            messages.forEach(message => {
-                addMessageToChat(message);
-            });
-            
-            // Scroll to bottom
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        };
-        
-        const addMessageToChat = (message) => {
-            // Check if message already exists (avoid duplicates)
-            if (document.getElementById(`msg-${message.id}`)) {
-                return;
-            }
-            
-            const messageEl = document.createElement('div');
-            messageEl.id = `msg-${message.id}`;
-            messageEl.className = 'mb-2';
-            
-            // Get display name
-            let displayName = 'Guest';
-            if (message.username) {
-                displayName = message.username;
-            } else if (message.users?.email) {
-                displayName = message.users.email.split('@')[0]; // Just use the part before @ in email
-            }
-            
-            // Format timestamp
-            const time = formatTimestamp(message.created_at);
-            
-            // Don't rely on immediate user checking for UI display
-            // This will just color the message based on the user_id
-            const isCurrentUserMessage = message.user_id && 
-                localStorage.getItem('currentUserId') === message.user_id;
-            
-            messageEl.innerHTML = `
-                <div class="flex items-start space-x-1">
-                    <span class="text-xs text-gray-500">[${time}]</span>
-                    <span class="font-bold ${isCurrentUserMessage ? 'text-green-400' : 'text-blue-400'}">${displayName}:</span>
-                    <span class="break-words">${escapeHTML(message.message)}</span>
-                </div>
-            `;
-            
-            chatMessages.appendChild(messageEl);
-            
-            // Scroll to bottom on new messages
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        };
-        
-        const handleNewChatMessage = (message) => {
-            console.log('New chat message received:', message);
-            
-            // If it's a valid message with an id, add it to the chat
-            if (message && message.id) {
-                // All we need is the message data to display it
-                addMessageToChat(message);
-                
-                // Optionally notify user about new message with a toast
-                const currentUserId = localStorage.getItem('currentUserId');
-                const isFromCurrentUser = message.user_id && currentUserId === message.user_id;
-                
-                // Only show notification for messages from others
-                if (!isFromCurrentUser) {
-                    const username = message.username || 'Someone';
-                    showToast(`${username} sent a new message`, 'info');
-                }
-            } else {
-                console.error('Received invalid chat message data:', message);
-            }
-        };
-        
-        const sendMessage = async () => {
-            const messageText = chatInput.value.trim();
-            
-            if (!messageText) return;
-            
-            try {
-                // Get current user information more reliably
-                const user = await getCurrentUser();
-                let username = null;
-                let userId = null;
-                
-                // If user is authenticated, use their ID
-                if (user && user.id) {
-                    userId = user.id;
-                    console.log('Sending message as authenticated user:', userId);
-                } else {
-                    // Use guest username for non-authenticated users
-                    username = localStorage.getItem('guestUsername');
-                    
-                    if (!username) {
-                        username = prompt('Enter a display name for chat:');
-                        
-                        if (!username) {
-                            // Use default if they cancel
-                            username = 'Guest' + Math.floor(Math.random() * 1000);
-                        }
-                        
-                        localStorage.setItem('guestUsername', username);
-                    }
-                    console.log('Sending message as guest:', username);
-                }
-                
-                const { success, error } = await chat.sendChatMessage(
-                    messageText,
-                    userId,
-                    username
-                );
-                
-                if (!success) {
-                    console.error('Error sending message:', error);
-                    showToast('Failed to send message. Try again.', 'error');
-                    return;
-                }
-                
-                // Clear input after sending
-                chatInput.value = '';
-            } catch (error) {
-                console.error('Failed to send chat message:', error);
-                showToast('Failed to send message. Try again.', 'error');
-            }
-        };
-        
-        // Utility function to escape HTML
-        const escapeHTML = (str) => {
-            return str
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        };
-        
-        // Initialize
+        // Initialize the app
         const init = async () => {
             console.log('Initializing app...');
             
             try {
-                // First, check if Supabase is reachable
-                const { success, error } = await checkConnection();
+                // Check database connection
+                const connectionResult = await checkConnection();
+                console.log('Database connection check result:', connectionResult);
                 
-                if (!success) {
-                    console.error('Database connection check failed:', error);
-                    showToast('Database connection failed. Please try again later.', 'error');
+                if (!connectionResult) {
+                    showToast('Unable to connect to the server. Please check your connection.', 'error');
                     return;
                 }
                 
                 console.log('Database connection successful');
                 
-                // Load initial data
-                const gamesLoaded = await loadActiveGames();
-                console.log('Games loaded:', gamesLoaded);
-                
-                // Load chat messages
-                await loadChatMessages();
+                // Load active games
+                await loadActiveGames();
+                console.log('Active games loaded successfully');
                 
                 // Set up real-time updates after confirming connection
-                const realtimeSuccess = await setupRealTimeUpdates();
-                console.log('Real-time updates set up:', realtimeSuccess);
+                try {
+                    const realtimeSuccess = await setupRealTimeUpdates();
+                    console.log('Real-time updates set up:', realtimeSuccess);
+                    
+                    if (!realtimeSuccess) {
+                        showToast('Real-time updates may not work. You might need to refresh manually to see changes.', 'warning');
+                    }
+                } catch (realtimeError) {
+                    console.error('Failed to set up real-time updates:', realtimeError);
+                    showToast('Real-time updates could not be set up. You might need to refresh manually.', 'error');
+                }
                 
                 // Check user authentication status
-                const user = await getCurrentUser();
-                if (user) {
-                    console.log('User is authenticated:', user);
-                    await updateBalanceDisplay();
-                } else {
-                    console.log('No authenticated user');
+                try {
+                    const user = await getCurrentUser();
+                    if (user) {
+                        console.log('User is authenticated:', user);
+                        await updateBalanceDisplay();
+                    } else {
+                        console.log('No authenticated user');
+                    }
+                } catch (authError) {
+                    console.error('Error checking authentication status:', authError);
                 }
                 
                 // Set up event listeners after everything is loaded
                 setupEventListeners();
                 
                 console.log('App initialization complete!');
-                
             } catch (error) {
-                console.error('Error during app initialization:', error);
-                showToast('An error occurred during app initialization. Please refresh.', 'error');
+                console.error('Error initializing app:', error);
+                showToast('There was an error initializing the application. Please refresh the page.', 'error');
             }
         };
         
-        // Start the app
+        // Initialize the app when DOM is loaded
         init();
     });
-    
 } catch (error) {
-    console.error('Error in application:', error);
-    // Create a visible error message on the page
+    console.error('Fatal error in app.js:', error);
+    // Try to show error on page if possible
     document.addEventListener('DOMContentLoaded', () => {
-        const errorDiv = document.createElement('div');
-        errorDiv.style.position = 'fixed';
-        errorDiv.style.top = '10px';
-        errorDiv.style.right = '10px';
-        errorDiv.style.padding = '20px';
-        errorDiv.style.backgroundColor = 'red';
-        errorDiv.style.color = 'white';
-        errorDiv.style.zIndex = '9999';
-        errorDiv.textContent = 'Error loading application: ' + error.message;
-        document.body.appendChild(errorDiv);
+        const errorElement = document.createElement('div');
+        errorElement.className = 'fixed inset-0 bg-red-900 bg-opacity-90 flex items-center justify-center z-50 p-4';
+        errorElement.innerHTML = `
+            <div class="bg-gray-800 p-6 rounded-lg max-w-xl w-full">
+                <h2 class="text-xl text-white font-bold mb-4">Critical Error</h2>
+                <p class="text-gray-300 mb-4">There was a critical error loading the application:</p>
+                <div class="bg-gray-900 p-4 rounded mb-4 font-mono text-red-400 text-sm overflow-auto max-h-64">
+                    ${error.toString()}
+                </div>
+                <button class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition" onclick="location.reload()">
+                    Refresh Page
+                </button>
+            </div>
+        `;
+        document.body.appendChild(errorElement);
     });
 } 

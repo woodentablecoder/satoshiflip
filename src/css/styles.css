@@ -1,7 +1,10 @@
+/* Import Google Font */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
+
 /* Custom styles for SatoshiFlip */
 /* Global font setting */
 body, html {
-  font-family: 'Recursive', monospace;
+  font-family:  'Recursive', monospace;
 }
 
 #refresh-games-btn { /* Refresh button */
@@ -24,10 +27,58 @@ body, html {
   align-items: center;
 }
 
-/* Sidebar layout */
-.w-1/5 {
+.create-wager {
+  color: rgba(255, 255, 255, 0.147);
+}
+
+/* Bitcoin logo styling */
+#btc-logo, 
+.user-balance ₿,
+.user-balance:first-child {
+  color: #F7931A !important;
+}
+
+.user-balance span:last-child {
+  color: white !important;
+}
+
+.balance-grid {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  margin-top: 20px;
+  margin-bottom: 30px;
+}
+
+#deposit-btn {
+  background-color: #79FF6A;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 60px;
+  transition: all 0.2s ease-in-out;
+}
+
+#deposit-btn:hover {
+  background-color: #68ea5a;
+  transform: scale(1.02);
+}
+
+#withdraw-btn {
+  background-color: #FF6A6A;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  box-sizing: border-box;
+  width: 60px;
+}
+
+#withdraw-btn:hover {
+  background-color: #fb5959;
+  transform: scale(1.02);
 }
 
 /* Chat section */

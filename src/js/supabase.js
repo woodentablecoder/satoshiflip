@@ -237,86 +237,53 @@ export async function getActiveGames() {
   try {
     console.log('Fetching active games...');
     
-    // First try to get user information using a join, but if that fails, try without the join
-    try {
-      const { data, error } = await supabase
-        .from('games')
-        .select(`
-          id,
-          wager_amount,
-          created_at,
-          player1_id,
-          users!games_player1_id_fkey (email)
-        `)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(10); // Limit to 10 active games
+    // Use inner join to ensure we only get games with valid users
+    const { data, error } = await supabase
+      .from('games')
+      .select(`
+        id,
+        wager_amount,
+        created_at,
+        player1_id,
+        player1:player1_id (email)
+      `)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
       
-      if (error) {
-        throw error;
-      }
-      
-      console.log('Games data with user join successful:', data);
-      
-      if (!data || data.length === 0) {
-        console.log('No active games found');
-        return [];
-      }
-      
-      // Format the returned data
-      return data.map(game => {
-        // Check if users object exists and has email property
-        if (!game.users) {
-          console.warn(`Game ${game.id} has no associated user data. This may indicate a foreign key issue.`);
-        }
-        
-        const email = game.users?.email || 'anonymous@example.com';
-        const username = email.split('@')[0];
-        
-        return {
-          id: game.id,
-          playerId: game.player1_id,
-          playerName: username,
-          wagerAmount: game.wager_amount,
-          createdAt: new Date(game.created_at)
-        };
-      });
-    } catch (joinError) {
-      console.warn('Error fetching games with user join, trying without join:', joinError);
-      
-      // Fallback to a simpler query without the join
-      const { data, error } = await supabase
-        .from('games')
-        .select('id, wager_amount, created_at, player1_id')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(10); // Limit to 10 active games
-      
-      if (error) {
-        console.error('Error in fallback query:', error);
-        throw error;
-      }
-      
-      console.log('Games data without user join:', data);
-      
-      if (!data || data.length === 0) {
-        console.log('No active games found in fallback query');
-        return [];
-      }
-      
-      // Format the returned data with generic user info
-      return data.map(game => {
-        return {
-          id: game.id,
-          playerId: game.player1_id,
-          playerName: 'User ' + game.player1_id.substring(0, 4),
-          wagerAmount: game.wager_amount,
-          createdAt: new Date(game.created_at)
-        };
-      });
+    if (error) {
+      console.error('Error fetching active games:', error);
+      return [];
     }
+    
+    if (!data || data.length === 0) {
+      console.log('No active games found');
+      return [];
+    }
+    
+    // Format the returned data and filter out games with missing users
+    const formattedGames = data.map(game => {
+      // Check if player1 object exists and has email property
+      if (!game.player1 || !game.player1.email) {
+        console.warn(`Game ${game.id} has no associated user data. This may indicate a foreign key issue.`);
+        // Skip games with missing user data
+        return null;
+      }
+      
+      const email = game.player1.email;
+      const username = email.split('@')[0];
+      
+      return {
+        id: game.id,
+        playerId: game.player1_id,
+        playerName: username,
+        wagerAmount: game.wager_amount,
+        createdAt: new Date(game.created_at)
+      };
+    }).filter(game => game !== null); // Remove any null entries
+    
+    return formattedGames;
   } catch (error) {
-    console.error('Error getting active games:', error);
+    console.error('Error in getActiveGames:', error);
     return [];
   }
 }
@@ -618,87 +585,59 @@ export async function cancelGame(userId, gameId) {
   }
 }
 
-// Chat functionality
-export async function sendChatMessage(message, userId = null, username = null) {
+// Clean up orphaned games (ones with missing user references)
+// This function should be called by admins only
+export async function cleanupOrphanedGames() {
   try {
-    const messageData = {
-      message: message.trim()
-    };
+    console.log('Starting cleanup of orphaned games...');
     
-    // If user is logged in, add the user ID
-    if (userId) {
-      messageData.user_id = userId;
-    }
-    
-    // Add username for non-authenticated users or if provided
-    if (username) {
-      messageData.username = username;
-    }
-    
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .insert([messageData])
-      .select();
-      
-    if (error) throw error;
-    
-    return { success: true, data };
-  } catch (error) {
-    console.error('Error sending chat message:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-export async function getChatMessages(limit = 50) {
-  try {
-    const { data, error } = await supabase
-      .from('chat_messages')
+    // First get all games with pending status
+    const { data: games, error: gamesError } = await supabase
+      .from('games')
       .select(`
-        id, 
-        message, 
-        created_at, 
-        user_id, 
-        username,
-        users(email)
+        id,
+        player1_id,
+        users:player1_id (id)
       `)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-      
-    if (error) throw error;
+      .eq('status', 'pending');
+    
+    if (gamesError) {
+      console.error('Error fetching games for cleanup:', gamesError);
+      return { success: false, error: gamesError.message };
+    }
+    
+    // Find orphaned games (where the user reference is null)
+    const orphanedGameIds = games
+      .filter(game => !game.users || !game.users.id)
+      .map(game => game.id);
+    
+    console.log(`Found ${orphanedGameIds.length} orphaned games to clean up`);
+    
+    if (orphanedGameIds.length === 0) {
+      return { success: true, message: 'No orphaned games found' };
+    }
+    
+    // Delete the orphaned games
+    const { error: deleteError } = await supabase
+      .from('games')
+      .delete()
+      .in('id', orphanedGameIds);
+    
+    if (deleteError) {
+      console.error('Error deleting orphaned games:', deleteError);
+      return { success: false, error: deleteError.message };
+    }
     
     return { 
       success: true, 
-      data: data.reverse() // Return in chronological order
+      message: `Successfully cleaned up ${orphanedGameIds.length} orphaned games`,
+      deletedIds: orphanedGameIds
     };
   } catch (error) {
-    console.error('Error getting chat messages:', error);
+    console.error('Error in cleanupOrphanedGames:', error);
     return { success: false, error: error.message };
   }
 }
 
-export function subscribeToChatMessages(callback) {
-  console.log('Setting up realtime subscription for chat messages');
-  
-  const channel = supabase
-    .channel('chat-events')
-    .on('postgres_changes', 
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'chat_messages',
-          select: {
-            columns: 'id,user_id,username,message,created_at'
-          }
-        }, 
-        payload => {
-          console.log('Chat message received:', payload);
-          callback(payload.new);
-        })
-    .subscribe(status => {
-      console.log('Chat subscription status:', status);
-    });
-    
-  return channel;
-}
-
+// Export the supabase instance for direct access if needed
 export default supabase; 

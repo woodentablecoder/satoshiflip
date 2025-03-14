@@ -63,6 +63,66 @@ export function initAuth() {
   loginForm.addEventListener('submit', handleLogin);
   logoutBtn.addEventListener('click', handleLogout);
   
+  // Add display name save handler
+  const saveButton = document.getElementById('save-display-name');
+  if (saveButton) {
+    console.log('Adding save display name handler');
+    saveButton.addEventListener('click', async () => {
+      const displayNameInput = document.getElementById('display-name-input');
+      const newDisplayName = displayNameInput.value.trim();
+      
+      if (!newDisplayName) {
+        authError.textContent = 'Display name cannot be empty';
+        authError.classList.add('text-red-500');
+        authError.classList.remove('text-green-500');
+        return;
+      }
+      
+      try {
+        // Disable button and show loading state
+        saveButton.disabled = true;
+        saveButton.textContent = 'Saving...';
+        
+        const supabase = (await import('./supabase.js')).default;
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) throw new Error('No user logged in');
+        
+        console.log('Updating display name for user:', user.id);
+        
+        const { data, error } = await supabase
+          .from('users')
+          .update({ display_name: newDisplayName })
+          .eq('id', user.id)
+          .select();
+
+        console.log('Update response:', { data, error });
+
+        if (error) throw error;
+        
+        authError.textContent = 'Display name updated successfully!';
+        authError.classList.remove('text-red-500');
+        authError.classList.add('text-green-500');
+        
+        // Update any UI elements that show the display name
+        const userDisplayElements = document.querySelectorAll('.user-display-name');
+        userDisplayElements.forEach(el => el.textContent = newDisplayName);
+        
+      } catch (error) {
+        console.error('Error updating display name:', error);
+        authError.textContent = 'Failed to update display name: ' + (error.message || 'Unknown error');
+        authError.classList.add('text-red-500');
+        authError.classList.remove('text-green-500');
+      } finally {
+        // Re-enable button and restore text
+        saveButton.disabled = false;
+        saveButton.textContent = 'Save';
+      }
+    });
+  } else {
+    console.error('Save display name button not found');
+  }
+  
   // Connect explicit auth button (already in HTML)
   const explicitAuthBtn = document.getElementById('explicit-auth-btn');
   if (explicitAuthBtn) {
@@ -99,6 +159,32 @@ async function handleSignup(e) {
     if (!result.success) {
       authError.textContent = result.error || 'Failed to create account';
       return;
+    }
+
+    // Get the user data
+    const supabase = (await import('./supabase.js')).default;
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (user) {
+      // Create unique BTC address
+      const timestamp = Date.now();
+      const uniqueBtcAddress = `btc-${timestamp}-${user.id.substring(0, 8)}`;
+      
+      // Create user record in database
+      console.log('Creating new user record for:', user.id);
+      const { error: createError } = await supabase
+        .from('users')
+        .insert({
+          id: user.id,
+          email: user.email,
+          display_name: null,
+          balance: 0,
+          btc_address: uniqueBtcAddress
+        });
+
+      if (createError) {
+        console.error('Error creating user record:', createError);
+      }
     }
     
     // Show success message
@@ -143,6 +229,43 @@ async function handleLogin(e) {
       authError.textContent = result.error || 'Failed to log in';
       return;
     }
+
+    // Get the user data
+    const supabase = (await import('./supabase.js')).default;
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      throw new Error('Failed to get user data');
+    }
+
+    // Check if user exists in the database
+    const { data: existingUser, error: checkError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (checkError && checkError.code === 'PGRST116') {
+      // Create unique BTC address
+      const timestamp = Date.now();
+      const uniqueBtcAddress = `btc-${timestamp}-${user.id.substring(0, 8)}`;
+      
+      // User doesn't exist in database, create them
+      console.log('Creating new user record for:', user.id);
+      const { error: createError } = await supabase
+        .from('users')
+        .insert({
+          id: user.id,
+          email: user.email,
+          display_name: null,
+          balance: 0,
+          btc_address: uniqueBtcAddress
+        });
+
+      if (createError) {
+        console.error('Error creating user record:', createError);
+      }
+    }
     
     // Hide auth forms and show user info
     document.getElementById('login-container').classList.add('hidden');
@@ -156,7 +279,7 @@ async function handleLogin(e) {
     authModal.classList.add('hidden');
     
     // Update UI for logged in user
-    updateUIForAuthState(true);
+    await updateUIForAuthState(true);
     
     // Reset form
     loginForm.reset();
@@ -179,7 +302,7 @@ async function handleLogout() {
     userInfo.classList.add('hidden');
     
     // Update UI for logged out user
-    updateUIForAuthState(false);
+    await updateUIForAuthState(false);
   } catch (error) {
     authError.textContent = error.message || 'An error occurred during logout';
   }
@@ -241,22 +364,116 @@ async function checkAuthState() {
       }
     }
     
-    updateUIForAuthState(true);
+    await updateUIForAuthState(true);
   } else {
     // User is not logged in
     document.getElementById('login-container').classList.remove('hidden');
     userInfo.classList.add('hidden');
     
-    updateUIForAuthState(false);
+    await updateUIForAuthState(false);
   }
 }
 
 // Update UI based on auth state
-function updateUIForAuthState(isLoggedIn) {
+async function updateUIForAuthState(isLoggedIn) {
   // Show/hide auth button
   const explicitAuthBtn = document.getElementById('explicit-auth-btn');
   if (explicitAuthBtn) {
     explicitAuthBtn.textContent = isLoggedIn ? 'Account' : 'Login / Sign Up';
+  }
+  
+  // Show/hide login/signup forms and user info
+  const loginContainer = document.getElementById('login-container');
+  const signupContainer = document.getElementById('signup-container');
+  const userInfo = document.getElementById('user-info');
+
+  if (isLoggedIn) {
+    loginContainer.classList.add('hidden');
+    signupContainer.classList.add('hidden');
+    userInfo.classList.remove('hidden');
+    
+    // Add display name save handler when user info becomes visible
+    const saveButton = document.getElementById('save-display-name');
+    if (saveButton) {
+      console.log('Adding save display name handler');
+      // Remove any existing listeners to prevent duplicates
+      const newSaveButton = saveButton.cloneNode(true);
+      saveButton.parentNode.replaceChild(newSaveButton, saveButton);
+      
+      // Load current display name if it exists
+      const supabase = (await import('./supabase.js')).default;
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (user) {
+        const { data: userData, error: userDataError } = await supabase
+          .from('users')
+          .select('display_name')
+          .eq('id', user.id)
+          .single();
+          
+        if (!userDataError && userData?.display_name) {
+          document.getElementById('display-name-input').value = userData.display_name;
+        }
+      }
+      
+      newSaveButton.addEventListener('click', async () => {
+        const displayNameInput = document.getElementById('display-name-input');
+        const newDisplayName = displayNameInput.value.trim();
+        const authError = document.getElementById('auth-error');
+        
+        if (!newDisplayName) {
+          authError.textContent = 'Display name cannot be empty';
+          authError.classList.add('text-red-500');
+          authError.classList.remove('text-green-500');
+          return;
+        }
+        
+        try {
+          // Disable button and show loading state
+          newSaveButton.disabled = true;
+          newSaveButton.textContent = 'Saving...';
+          
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          
+          if (userError || !user) throw new Error('No user logged in');
+          
+          console.log('Updating display name for user:', user.id);
+          
+          const { data, error } = await supabase
+            .from('users')
+            .update({ display_name: newDisplayName })
+            .eq('id', user.id)
+            .select();
+
+          console.log('Update response:', { data, error });
+
+          if (error) throw error;
+          
+          authError.textContent = 'Display name updated successfully!';
+          authError.classList.remove('text-red-500');
+          authError.classList.add('text-green-500');
+          
+          // Update any UI elements that show the display name
+          const userDisplayElements = document.querySelectorAll('.user-display-name');
+          userDisplayElements.forEach(el => el.textContent = newDisplayName);
+          
+        } catch (error) {
+          console.error('Error updating display name:', error);
+          authError.textContent = 'Failed to update display name: ' + (error.message || 'Unknown error');
+          authError.classList.add('text-red-500');
+          authError.classList.remove('text-green-500');
+        } finally {
+          // Re-enable button and restore text
+          newSaveButton.disabled = false;
+          newSaveButton.textContent = 'Save';
+        }
+      });
+    } else {
+      console.error('Save display name button not found');
+    }
+  } else {
+    loginContainer.classList.remove('hidden');
+    signupContainer.classList.add('hidden');
+    userInfo.classList.add('hidden');
   }
   
   // Enable/disable game creation
@@ -278,7 +495,7 @@ function updateUIForAuthState(isLoggedIn) {
   
   // Publish auth state change event
   window.dispatchEvent(new CustomEvent('authStateChanged', { 
-    detail: { isLoggedIn, user: isLoggedIn ? getCurrentUser() : null } 
+    detail: { isLoggedIn, user: isLoggedIn ? await getCurrentUser() : null } 
   }));
 }
 
