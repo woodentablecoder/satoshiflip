@@ -108,12 +108,6 @@ export function initAuth() {
         const userDisplayElements = document.querySelectorAll('.user-display-name');
         userDisplayElements.forEach(el => el.textContent = newDisplayName);
         
-        // Update the Account button text
-        const explicitAuthBtn = document.getElementById('explicit-auth-btn');
-        if (explicitAuthBtn) {
-          explicitAuthBtn.textContent = newDisplayName;
-        }
-        
       } catch (error) {
         console.error('Error updating display name:', error);
         authError.textContent = 'Failed to update display name: ' + (error.message || 'Unknown error');
@@ -386,22 +380,9 @@ async function updateUIForAuthState(isLoggedIn) {
   const explicitAuthBtn = document.getElementById('explicit-auth-btn');
   if (explicitAuthBtn) {
     if (isLoggedIn) {
-      // Get user's display name
-      const supabase = (await import('./supabase.js')).default;
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (user) {
-        const { data: userData, error: userDataError } = await supabase
-          .from('users')
-          .select('display_name')
-          .eq('id', user.id)
-          .single();
-          
-        explicitAuthBtn.textContent = userData?.display_name || 'Account';
-      } else {
-        explicitAuthBtn.textContent = 'Account';
-      }
+      explicitAuthBtn.innerHTML = '<img src="public/images/smile-mouth-open.svg" alt="Profile" style="filter: brightness(0) invert(1);">';
     } else {
-      explicitAuthBtn.textContent = 'Login / Sign Up';
+      explicitAuthBtn.innerHTML = '<img src="public/images/smile-mouth-open.svg" alt="Login / Sign Up" style="filter: brightness(0) invert(1);">';
     }
   }
   
@@ -478,12 +459,6 @@ async function updateUIForAuthState(isLoggedIn) {
           // Update any UI elements that show the display name
           const userDisplayElements = document.querySelectorAll('.user-display-name');
           userDisplayElements.forEach(el => el.textContent = newDisplayName);
-          
-          // Update the Account button text
-          const explicitAuthBtn = document.getElementById('explicit-auth-btn');
-          if (explicitAuthBtn) {
-            explicitAuthBtn.textContent = newDisplayName;
-          }
           
         } catch (error) {
           console.error('Error updating display name:', error);

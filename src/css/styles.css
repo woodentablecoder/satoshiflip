@@ -7,6 +7,24 @@ body, html {
   font-family:  'Recursive', monospace;
 }
 
+.satoshi-title {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@font-face {
+  font-family: 'GohuFont';
+  src: url('/public/fonts/Gohu/GohuFont14NerdFontMono-Regular.ttf') format('truetype');
+}
+
+.satoshiflip-title {
+  font-size: 28px;
+  text-align: center;
+  font-weight: bold;
+  font-family: 'GohuFont', monospace;
+}
+
 #refresh-games-btn { /* Refresh button */
   background-color: #ffaa00;
 }
