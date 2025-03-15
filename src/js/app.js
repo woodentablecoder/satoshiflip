@@ -140,7 +140,7 @@ try {
                     <div class="flex items-start gap-4 mb-4" style="min-width: 250px; background-color: rgb(22, 22, 22); padding: 20px; border-radius: 10px; border: 2px solid #ffffff1f">
                         <div class="flex flex-col items-center gap-2">
                             <img src="public/images/Untitled-3.jpg" alt="User profile" class="w-16 h-16 bg-white rounded-[10px] p-2" />
-                            <span class="text-[rgba(255,255,255,1)] font-mono text-sm">${game.playerName}</span>
+                            <span class="text-[rgba(255,255,255,1)] font-mono text-sm">${game.playerName || 'Unknown'}</span>
                         </div>
                         <div class="flex flex-col items-end flex-grow">
                             <div class="text-right">

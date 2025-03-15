@@ -248,7 +248,8 @@ export async function getActiveGames() {
         wager_amount,
         created_at,
         player1_id,
-        player1:player1_id (email)
+        team_choice,
+        player1:player1_id (email, display_name)
       `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
@@ -273,13 +274,15 @@ export async function getActiveGames() {
       }
       
       const email = game.player1.email;
-      const username = email.split('@')[0];
+      // Use display_name if available, otherwise use email username
+      const username = game.player1.display_name || email.split('@')[0];
       
       return {
         id: game.id,
         playerId: game.player1_id,
         playerName: username,
         wagerAmount: game.wager_amount,
+        teamChoice: game.team_choice,
         createdAt: new Date(game.created_at)
       };
     }).filter(game => game !== null); // Remove any null entries
