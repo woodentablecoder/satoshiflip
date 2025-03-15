@@ -92,14 +92,30 @@ class Chat {
         }
         
         try {
-            // Get a valid username from user metadata or email
+            // Always use display_name if available, otherwise use a default
             let username = 'Anonymous';
             
+            // First check if the display name is in user_metadata (for backward compatibility)
             if (currentUser.user_metadata && currentUser.user_metadata.display_name) {
                 username = currentUser.user_metadata.display_name;
-            } else if (currentUser.email) {
-                // Use email as fallback but remove domain for privacy
-                username = currentUser.email.split('@')[0];
+            } else {
+                // Get display name from the users table
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('display_name')
+                    .eq('id', currentUser.id)
+                    .single();
+                
+                if (!userError && userData && userData.display_name) {
+                    username = userData.display_name;
+                } else if (!userError && userData) {
+                    // If no display_name, use the email username part
+                    username = currentUser.email ? currentUser.email.split('@')[0] : 'Anonymous';
+                }
+                
+                if (userError) {
+                    console.error('Error fetching user data:', userError);
+                }
             }
             
             // Use the basic insert without timestamp field (it will use the default created_at)
@@ -156,34 +172,50 @@ class Chat {
         }
         
         try {
-            // Deduct tip amount from sender
-            const { error: deductError } = await supabase.rpc('deduct_balance', {
+            // Deduct tip amount from sender (using update_balance with negative amount)
+            const { error: deductError } = await supabase.rpc('update_balance', {
                 user_id: currentUser.id,
-                amount: amount
+                amount: -amount  // Negative amount to deduct
             });
             
             if (deductError) throw deductError;
             
-            // Add tip amount to recipient
-            const { error: addError } = await supabase.rpc('add_balance', {
+            // Add tip amount to recipient (using update_balance with positive amount)
+            const { error: addError } = await supabase.rpc('update_balance', {
                 user_id: this.selectedUserId,
-                amount: amount
+                amount: amount  // Positive amount to add
             });
             
             if (addError) throw addError;
             
-            // Get a valid username from user metadata or email
+            // Always use display_name if available, otherwise use a default
             let username = 'Anonymous';
             
+            // First check if the display name is in user_metadata (for backward compatibility)
             if (currentUser.user_metadata && currentUser.user_metadata.display_name) {
                 username = currentUser.user_metadata.display_name;
-            } else if (currentUser.email) {
-                // Use email as fallback but remove domain for privacy
-                username = currentUser.email.split('@')[0];
+            } else {
+                // Get display name from the users table
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('display_name')
+                    .eq('id', currentUser.id)
+                    .single();
+                
+                if (!userError && userData && userData.display_name) {
+                    username = userData.display_name;
+                } else if (!userError && userData) {
+                    // If no display_name, use the email username part
+                    username = currentUser.email ? currentUser.email.split('@')[0] : 'Anonymous';
+                }
+                
+                if (userError) {
+                    console.error('Error fetching user data:', userError);
+                }
             }
             
             // Send tip message as a regular message
-            const tipMessage = `Tipped ${this.selectedUsername} ${amount} satoshis! 🎉`;
+            const tipMessage = `Tipped ${this.selectedUsername} ₿ ${amount.toLocaleString('en-US').replace(/,/g, ' ')} 🎉`;
             
             // Use the basic insert without timestamp field
             const { data, error } = await supabase
@@ -219,15 +251,12 @@ class Chat {
         // Use created_at instead of timestamp
         const timestamp = new Date(message.created_at).toLocaleTimeString();
         
-        // Extract email username if the username is an email
+        // Use the username directly without email extraction
+        // The username should already be the display_name from when the message was sent
         let displayUsername = message.username || 'Anonymous';
-        if (displayUsername.includes('@')) {
-            // If it's an email address, just use the part before the @
-            displayUsername = displayUsername.split('@')[0];
-        }
         
         // Check if this is a tip message by looking for the message text
-        const isTipMessage = message.message && message.message.includes('Tipped') && message.message.includes('satoshis');
+        const isTipMessage = message.message && message.message.includes('Tipped') && message.message.includes('₿');
         
         if (isTipMessage) {
             messageElement.innerHTML = `
