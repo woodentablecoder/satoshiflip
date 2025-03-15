@@ -14,6 +14,10 @@ Run the `create_chat_table.sql` script to create the chat_messages table with th
 
 If you want to add additional columns for tip functionality, run the `add_chat_columns.sql` script.
 
+## 3. Update chat usernames (if needed)
+
+If you have existing chat messages with email addresses as usernames, run the `update_chat_usernames.sql` script to extract just the username part.
+
 ## Troubleshooting
 
 If you encounter errors related to missing columns:

@@ -50,8 +50,8 @@
                     </div>
                 </div>
                 <div class="coin-container">
-                    <button id=heads-btn>🟡</button>
-                    <button id=tails-btn>⚪</button>
+                    <button id="heads-btn"><img src="public/images/bitcoin heads.png" alt="Heads" style="max-width: 20px; display: block; margin: 0 auto;"></button>
+                    <button id="tails-btn"><img src="public/images/bitcoin.svg" alt="Tails" style="max-width: 20px; display: block; margin: 0 auto;"></button>
                 </div>
                 <input 
                     type="number" 
@@ -88,24 +88,8 @@
                             id="send-message-btn"
                             class="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded transition"
                         >
-                            <img src="images/send.svg" alt="Send" style="filter: brightness(0);" class="w-4 h-4">
+                            <img src="public/images/send.svg" alt="Send" style="filter: brightness(0);" class="w-4 h-4">
                         </button>
-                    </div>
-                    <div class="flex items-center gap-2 mt-2">
-                        <button 
-                            id="tip-btn"
-                            class="text-sm text-yellow-500 hover:text-yellow-400 flex items-center gap-1"
-                        >
-                            <span id="btc-logo-chat" style="color: #F7931A">₿</span> Tip
-                        </button>
-                        <input 
-                            type="number" 
-                            id="tip-amount" 
-                            class="w-24 bg-[#161616] text-white rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                            placeholder="Amount"
-                            min="100"
-                            max="1000000"
-                        >
                     </div>
                 </div>
             </div>
@@ -172,10 +156,10 @@
                 <div id="coin" class="coin mx-auto">
                     <div class="coin-inner">
                         <div class="side heads">
-                            <span>H</span>
+                            <img src="public/images/bitcoin heads.png" alt="Bitcoin Heads" class="w-full h-full">
                         </div>
                         <div class="side tails">
-                            <span>T</span>
+                            <img src="public/images/bitcoin.svg" alt="Bitcoin Tails" class="w-full h-full transform rotate-180">
                         </div>
                     </div>
                 </div>
@@ -303,6 +287,45 @@
                 </div>
                 <button id="submit-withdraw" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">
                     Withdraw
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tip Modal -->
+    <div id="tip-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50">
+        <div class="bg-[#1D1D1D] p-6 rounded-lg w-full max-w-md border border-[#ffffff1f]" style="border-width: 2px;">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl text-white font-bold">Send Tip</h2>
+                <button id="close-tip-modal" class="text-gray-400 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div id="tip-error" class="text-red-500 mb-4 text-sm text-center hidden"></div>
+            
+            <p class="text-gray-300 mb-4">Send a tip to ‎ <span id="tip-recipient" class="text-yellow-500 font-semibold">User</span></p>
+            
+            <div class="mb-6">
+                <label class="block text-gray-300 mb-2" for="tip-amount">Amount (satoshis)</label>
+                <input 
+                    id="tip-amount" 
+                    type="number" 
+                    required 
+                    class="w-full bg-[#161616] border border-gray-600 p-2 rounded text-white" 
+                    min="100" 
+                    placeholder="₿0"
+                >
+            </div>
+            
+            <div class="flex gap-2">
+                <button id="cancel-tip-btn" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition">
+                    Cancel
+                </button>
+                <button id="confirm-tip-btn" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded transition">
+                    Send Tip
                 </button>
             </div>
         </div>

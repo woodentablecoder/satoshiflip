@@ -8,8 +8,6 @@ class Chat {
         this.messageContainer = document.getElementById('chat-messages');
         this.chatInput = document.getElementById('chat-input');
         this.sendButton = document.getElementById('send-message-btn');
-        this.tipButton = document.getElementById('tip-btn');
-        this.tipAmount = document.getElementById('tip-amount');
         this.selectedUserId = null;
         this.selectedUsername = null;
         
@@ -32,8 +30,41 @@ class Chat {
             }
         });
         
-        // Handle tipping
-        this.tipButton.addEventListener('click', () => this.sendTip());
+        // Setup tip modal event listeners
+        this.setupTipModalListeners();
+    }
+    
+    setupTipModalListeners() {
+        // Get tip modal elements
+        const tipModal = document.getElementById('tip-modal');
+        const closeTipModal = document.getElementById('close-tip-modal');
+        const cancelTipBtn = document.getElementById('cancel-tip-btn');
+        const confirmTipBtn = document.getElementById('confirm-tip-btn');
+        const tipAmount = document.getElementById('tip-amount');
+        
+        // Close modal handlers
+        const closeModal = () => {
+            tipModal.classList.add('hidden');
+            this.selectedUserId = null;
+            this.selectedUsername = null;
+            tipAmount.value = '';
+            document.getElementById('tip-error').classList.add('hidden');
+            document.getElementById('tip-error').textContent = '';
+        };
+        
+        closeTipModal.addEventListener('click', closeModal);
+        cancelTipBtn.addEventListener('click', closeModal);
+        
+        // Confirm tip handler
+        confirmTipBtn.addEventListener('click', () => this.sendTip());
+        
+        // Enter key in amount field
+        tipAmount.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.sendTip();
+            }
+        });
     }
     
     async setupRealtimeSubscription() {
@@ -61,12 +92,22 @@ class Chat {
         }
         
         try {
+            // Get a valid username from user metadata or email
+            let username = 'Anonymous';
+            
+            if (currentUser.user_metadata && currentUser.user_metadata.display_name) {
+                username = currentUser.user_metadata.display_name;
+            } else if (currentUser.email) {
+                // Use email as fallback but remove domain for privacy
+                username = currentUser.email.split('@')[0];
+            }
+            
             // Use the basic insert without timestamp field (it will use the default created_at)
             const { data, error } = await supabase
                 .from('chat_messages')
                 .insert([{
                     user_id: currentUser.id,
-                    username: currentUser.user_metadata.display_name || currentUser.email,
+                    username: username,
                     message: messageText
                 }]);
                 
@@ -82,32 +123,35 @@ class Chat {
     }
     
     async sendTip() {
-        if (!this.selectedUserId || !this.selectedUsername) {
-            showToast('Please select a user to tip by clicking their name', 'error');
-            return;
-        }
+        const tipModal = document.getElementById('tip-modal');
+        const tipAmount = document.getElementById('tip-amount');
+        const tipError = document.getElementById('tip-error');
         
-        const amount = parseInt(this.tipAmount.value);
-        if (!amount || amount < 100) {
-            showToast('Minimum tip amount is 100 satoshis', 'error');
+        const amount = parseInt(tipAmount.value);
+        if (!amount || amount <= 0) {
+            tipError.textContent = 'Tip amount must be greater than 0 satoshis';
+            tipError.classList.remove('hidden');
             return;
         }
         
         const currentUser = await getCurrentUser();
         if (!currentUser) {
-            showToast('Please log in to tip', 'error');
+            tipError.textContent = 'Please log in to tip';
+            tipError.classList.remove('hidden');
             return;
         }
         
         // Don't allow tipping yourself
         if (currentUser.id === this.selectedUserId) {
-            showToast('You cannot tip yourself', 'error');
+            tipError.textContent = 'You cannot tip yourself';
+            tipError.classList.remove('hidden');
             return;
         }
         
         const balance = await getUserBalance(currentUser.id);
         if (balance < amount) {
-            showToast('Insufficient balance for tip', 'error');
+            tipError.textContent = 'Insufficient balance for tip';
+            tipError.classList.remove('hidden');
             return;
         }
         
@@ -128,6 +172,16 @@ class Chat {
             
             if (addError) throw addError;
             
+            // Get a valid username from user metadata or email
+            let username = 'Anonymous';
+            
+            if (currentUser.user_metadata && currentUser.user_metadata.display_name) {
+                username = currentUser.user_metadata.display_name;
+            } else if (currentUser.email) {
+                // Use email as fallback but remove domain for privacy
+                username = currentUser.email.split('@')[0];
+            }
+            
             // Send tip message as a regular message
             const tipMessage = `Tipped ${this.selectedUsername} ${amount} satoshis! 🎉`;
             
@@ -136,21 +190,25 @@ class Chat {
                 .from('chat_messages')
                 .insert([{
                     user_id: currentUser.id,
-                    username: currentUser.user_metadata.display_name || currentUser.email,
+                    username: username,
                     message: tipMessage
                 }]);
                 
             if (error) throw error;
             
+            // Close the tip modal
+            tipModal.classList.add('hidden');
+            
             // Clear tip amount and selected user
-            this.tipAmount.value = '';
+            tipAmount.value = '';
             this.selectedUserId = null;
             this.selectedUsername = null;
             showToast('Tip sent successfully!', 'success');
             
         } catch (error) {
             console.error('Error sending tip:', error);
-            showToast('Failed to send tip', 'error');
+            tipError.textContent = 'Failed to send tip: ' + (error.message || 'Unknown error');
+            tipError.classList.remove('hidden');
         }
     }
     
@@ -161,29 +219,34 @@ class Chat {
         // Use created_at instead of timestamp
         const timestamp = new Date(message.created_at).toLocaleTimeString();
         
+        // Extract email username if the username is an email
+        let displayUsername = message.username || 'Anonymous';
+        if (displayUsername.includes('@')) {
+            // If it's an email address, just use the part before the @
+            displayUsername = displayUsername.split('@')[0];
+        }
+        
         // Check if this is a tip message by looking for the message text
         const isTipMessage = message.message && message.message.includes('Tipped') && message.message.includes('satoshis');
         
         if (isTipMessage) {
             messageElement.innerHTML = `
-                <div class="flex items-center gap-2">
-                    <span class="text-yellow-500 font-mono">${message.username}</span>
-                    <span class="text-gray-400 text-sm">${timestamp}</span>
+                <div class="mb-1">
+                    <span class="text-yellow-500 font-mono font-bold">${displayUsername}</span>
                 </div>
-                <div class="mt-1 text-green-400">${message.message}</div>
+                <div class="flex justify-between items-start">
+                    <div class="text-green-400">${message.message}</div>
+                </div>
             `;
         } else {
             messageElement.innerHTML = `
-                <div class="flex items-center gap-2">
-                    <span class="text-yellow-500 font-mono flex items-center">
-                        ${message.username}
-                        <button class="tip-user-btn ml-1" data-user-id="${message.user_id}" data-username="${message.username}">
-                            <span class="text-[#F7931A] hover:text-yellow-300 transition-colors">₿</span>
-                        </button>
-                    </span>
-                    <span class="text-gray-400 text-sm">${timestamp}</span>
+                <div class="mb-1 flex items-center justify-between">
+                    <span class="text-yellow-500 font-mono font-bold">${displayUsername}</span>
+                    <button class="tip-user-btn" data-user-id="${message.user_id}" data-username="${displayUsername}">
+                        <span class="text-[#F7931A] hover:text-yellow-300 transition-colors text-sm">₿</span>
+                    </button>
                 </div>
-                <div class="mt-1 text-white">${message.message}</div>
+                <div class="text-white">${message.message}</div>
             `;
             
             // Add click handler for the BTC icon to enable tipping
@@ -193,8 +256,19 @@ class Chat {
                     e.stopPropagation(); // Prevent triggering the username click
                     this.selectedUserId = tipBtn.dataset.userId;
                     this.selectedUsername = tipBtn.dataset.username;
-                    this.tipAmount.focus();
-                    showToast(`Ready to tip ${this.selectedUsername}`, 'info');
+                    
+                    // Show the tip modal
+                    const tipModal = document.getElementById('tip-modal');
+                    const tipRecipient = document.getElementById('tip-recipient');
+                    
+                    // Set the recipient name in the modal
+                    tipRecipient.textContent = this.selectedUsername;
+                    
+                    // Show the modal
+                    tipModal.classList.remove('hidden');
+                    
+                    // Focus the amount input
+                    document.getElementById('tip-amount').focus();
                 });
             }
         }
@@ -208,8 +282,19 @@ class Chat {
             if (userId && username) {
                 this.selectedUserId = userId;
                 this.selectedUsername = username;
-                this.tipAmount.focus();
-                showToast(`Ready to tip ${username}`, 'info');
+                
+                // Show the tip modal
+                const tipModal = document.getElementById('tip-modal');
+                const tipRecipient = document.getElementById('tip-recipient');
+                
+                // Set the recipient name in the modal
+                tipRecipient.textContent = this.selectedUsername;
+                
+                // Show the modal
+                tipModal.classList.remove('hidden');
+                
+                // Focus the amount input
+                document.getElementById('tip-amount').focus();
             }
         });
         
