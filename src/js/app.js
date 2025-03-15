@@ -315,8 +315,12 @@ try {
                             const isWinner = (currentUserId === winnerId);
                             console.log('User is in game! Is winner?', isWinner);
                             
+                            // Get wager amount from payload or find the game
+                            const wagerAmount = payload.new.wager_amount || 
+                                                activeGames.find(g => g.id === gameId)?.wagerAmount || 0;
+                            
                             // Show the coinflip animation with the actual result
-                            showCoinflip(isWinner, payload.new.flip_result);
+                            showCoinflip(isWinner, payload.new.flip_result, wagerAmount);
                             
                             // Update balance after game completes
                             updateBalanceDisplay();
@@ -407,9 +411,13 @@ try {
                     const isWinner = String(result.data.winner_id) === String(user.id);
                     console.log('Is joining player winner?', isWinner);
                     
+                    // Get wager amount from result or find the game
+                    const wagerAmount = result.data.amount ? result.data.amount / 2 : 
+                                        activeGames.find(g => g.id === gameId)?.wagerAmount || 0;
+                    
                     // Force animation display with slight delay to ensure UI is ready
                     setTimeout(() => {
-                        showCoinflip(isWinner, result.data.flip_result);
+                        showCoinflip(isWinner, result.data.flip_result, wagerAmount);
                     }, 300); // Slightly longer delay to ensure UI readiness
                 } else {
                     // No winner data immediately available, but game is joined
@@ -509,8 +517,8 @@ try {
         };
         
         // Show coinflip animation
-        const showCoinflip = (isWinner, flipResult) => {
-            console.log('SHOWING COINFLIP ANIMATION - Winner:', isWinner, 'Flip:', flipResult);
+        const showCoinflip = (isWinner, flipResult, wagerAmount = 0) => {
+            console.log('SHOWING COINFLIP ANIMATION - Winner:', isWinner, 'Flip:', flipResult, 'Wager:', wagerAmount);
             
             try {
                 // Get modal element
@@ -557,13 +565,24 @@ try {
                     
                     // Show the result after animation
                     setTimeout(() => {
+                        // Set the appropriate coin face
                         if (flipResult === 'heads') {
-                            resultElement.textContent = `${isWinner ? 'You win!' : 'You lose!'} (Heads)`;
-                            resultElement.className = `text-center mt-4 ${isWinner ? 'text-green-500' : 'text-red-500'} text-2xl mb-8`;
+                            coinInnerElement.style.transform = '';
                         } else {
                             coinInnerElement.style.transform = 'rotateY(990deg)';
-                            resultElement.textContent = `${isWinner ? 'You win!' : 'You lose!'} (Tails)`;
-                            resultElement.className = `text-center mt-4 ${isWinner ? 'text-green-500' : 'text-red-500'} text-2xl mb-8`;
+                        }
+                        
+                        // Format amount won/lost for display
+                        const winAmount = wagerAmount * 2;
+                        const loseAmount = wagerAmount;
+                        
+                        // Show result text focused on amount won rather than heads/tails
+                        if (isWinner) {
+                            resultElement.innerHTML = `You win! <span style="color: rgb(234, 179, 8);">₿</span> <span style="color: white; font-family: 'GohuFont14NerdFontMono-Regular', monospace;">${winAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}</span>`;
+                            resultElement.className = 'text-center mt-4 text-green-500 text-2xl mb-8';
+                        } else {
+                            resultElement.innerHTML = `You lose! <span style="color: rgb(234, 179, 8);">₿</span> <span style="color: white; font-family: 'GohuFont14NerdFontMono-Regular', monospace;">${loseAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}</span>`;
+                            resultElement.className = 'text-center mt-4 text-red-500 text-2xl mb-8';
                         }
                     }, 3000);
                 }, 50);
