@@ -6,6 +6,7 @@ DECLARE
   wager_amount BIGINT;
   w_id UUID; -- Renamed from winner_id to avoid ambiguity
   result JSON;
+  flip_result_value TEXT;
 BEGIN
   -- Get game data
   SELECT * INTO game_data FROM games WHERE id = game_id;
@@ -38,10 +39,13 @@ BEGIN
   VALUES (user_id, -wager_amount, 'wager', 'completed');
   
   -- Perform 50/50 coinflip (random function)
-  IF random() < 0.5 THEN
-    w_id := game_data.player1_id;
+  flip_result_value := CASE WHEN random() < 0.5 THEN 'heads' ELSE 'tails' END;
+  
+  -- Determine winner based on flip result and team choice
+  IF flip_result_value = game_data.team_choice THEN
+    w_id := game_data.player1_id; -- Creator wins
   ELSE
-    w_id := user_id;
+    w_id := user_id; -- Joiner wins
   END IF;
   
   -- Update game
@@ -49,6 +53,7 @@ BEGIN
     player2_id = user_id,
     status = 'completed',
     winner_id = w_id,
+    flip_result = flip_result_value,
     completed_at = NOW()
   WHERE id = game_id;
   
@@ -58,7 +63,8 @@ BEGIN
   -- Prepare result
   SELECT json_build_object(
     'winner_id', w_id,
-    'amount', wager_amount * 2
+    'amount', wager_amount * 2,
+    'flip_result', flip_result_value
   ) INTO result;
   
   RETURN result;

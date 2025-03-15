@@ -406,6 +406,7 @@ try {
                 if (result.data && result.data.winner_id) {
                     console.log('Game was completed immediately, showing animation for joiner.');
                     console.log('Winner data:', result.data.winner_id, 'Current user:', user.id);
+                    console.log('Flip result:', result.data.flip_result);
                     
                     // Convert to strings for safer comparison
                     const isWinner = String(result.data.winner_id) === String(user.id);
@@ -576,12 +577,12 @@ try {
                         const winAmount = wagerAmount * 2;
                         const loseAmount = wagerAmount;
                         
-                        // Show result text focused on amount won rather than heads/tails
+                        // Show result text with both the flip outcome and amount won/lost
                         if (isWinner) {
-                            resultElement.innerHTML = `You win! <span style="color: rgb(234, 179, 8);">₿</span> <span style="color: white; font-family: 'GohuFont14NerdFontMono-Regular', monospace;">${winAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}</span>`;
+                            resultElement.innerHTML = `Flip: ${flipResult}! You win! <span style="color: rgb(234, 179, 8);">₿</span> <span style="color: white; font-family: 'GohuFont14NerdFontMono-Regular', monospace;">${winAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}</span>`;
                             resultElement.className = 'text-center mt-4 text-green-500 text-2xl mb-8';
                         } else {
-                            resultElement.innerHTML = `You lose! <span style="color: rgb(234, 179, 8);">₿</span> <span style="color: white; font-family: 'GohuFont14NerdFontMono-Regular', monospace;">${loseAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}</span>`;
+                            resultElement.innerHTML = `Flip: ${flipResult}! You lose! <span style="color: rgb(234, 179, 8);">₿</span> <span style="color: white; font-family: 'GohuFont14NerdFontMono-Regular', monospace;">${loseAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}</span>`;
                             resultElement.className = 'text-center mt-4 text-red-500 text-2xl mb-8';
                         }
                     }, 3000);

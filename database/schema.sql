@@ -21,6 +21,7 @@ CREATE TABLE games (
   team_choice TEXT CHECK (team_choice IN ('heads', 'tails')), -- Creator's choice
   status TEXT CHECK (status IN ('pending', 'active', 'completed')),
   winner_id UUID REFERENCES users(id),
+  flip_result TEXT CHECK (flip_result IN ('heads', 'tails')), -- The actual flip result
   created_at TIMESTAMP DEFAULT NOW(),
   completed_at TIMESTAMP
 );
@@ -149,6 +150,7 @@ BEGIN
     player2_id = user_id,
     status = 'completed',
     winner_id = winner_id,
+    flip_result = flip_result,
     completed_at = NOW()
   WHERE id = game_id;
   

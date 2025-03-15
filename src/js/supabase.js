@@ -365,16 +365,24 @@ export async function joinGame(userId, gameId) {
         if (updateError) throw updateError;
         
         // 2. Implement simple coinflip
-        const isWinner = Math.random() < 0.5;
+        const isHeads = Math.random() < 0.5;
+        const flipResult = isHeads ? 'heads' : 'tails';
+        const isWinner = (flipResult === game.team_choice) ? false : true; // Creator wins if flip matches their choice
         const winnerId = isWinner ? userId : game.player1_id;
         const loserId = isWinner ? game.player1_id : userId;
         
-        // 3. Update game with winner
+        console.log(`Client-side fallback coinflip: 
+          Result: ${flipResult}
+          Creator chose: ${game.team_choice}
+          Winner is: ${winnerId === userId ? 'Joiner' : 'Creator'}`);
+        
+        // 3. Update game with winner and flip result
         const { error: winnerError } = await supabase
           .from('games')
           .update({
             winner_id: winnerId,
             status: 'completed',
+            flip_result: flipResult,
             completed_at: new Date().toISOString()
           })
           .eq('id', gameId);
@@ -428,7 +436,8 @@ export async function joinGame(userId, gameId) {
           data: {
             winner_id: winnerId,
             game_id: gameId,
-            wager_amount: game.wager_amount
+            amount: winnerAmount,
+            flip_result: flipResult
           }
         };
       }
