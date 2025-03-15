@@ -143,8 +143,12 @@ try {
                             <span class="text-[rgba(255,255,255,1)] font-mono text-sm">${game.playerName}</span>
                         </div>
                         <div class="flex flex-col items-end flex-grow">
-                        <span class="text-[rgba(255,255,255,0.8)] text-right">${game.teamChoice === 'heads' ? '🟡 Heads' : '⚪ Tails'}</span>
-                            <span class="text-yellow-500 font-mono text-right">${formatSatoshis(game.wagerAmount)}</span>
+                            <div class="text-right">
+                                <span class="text-[rgba(255,255,255,0.8)]">${game.teamChoice === 'heads' ? '🟡 Heads' : '⚪ Tails'}</span>
+                            </div>
+                            <div class="flex items-center justify-end mt-9" style="border-radius: 4px; min-width: 80px; min-height: 28px;">
+                                <span style="font-family: 'GohuFont', monospace; font-size: calc(0.875rem + 9px);"><span style="color: #F7931A; margin-right: 3px;">₿</span><span class="text-white">${game.wagerAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")}</span></span>
+                            </div>
                         </div>
                     </div>
                 `;

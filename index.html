@@ -44,28 +44,20 @@
             
             <div class="mb-4">
                 <div class="flex justify-between items-center mb-2">
-                    <div class="create-wager">Create Wager</div>
-                    <div class="user-balance" id="user-balance">
+                    <div class="create-wager" style="font-size: 14px; color: white;">Create Wager</div>
+                    <div class="user-balance" id="user-balance" style="font-family: 'GohuFont', monospace;">
                         <span id="btc-logo" style="color: #F7931A">₿</span> <span style="color: white">0</span>
                     </div>
                 </div>
                 <div class="coin-container">
-                    <button 
-                        id="heads-btn"
-                        style="background-color: #1D1D1D !important">
-                        🟡
-                    </button>
-                    <button 
-                        id="tails-btn" 
-                        style="background-color: #1D1D1D">
-                        ⚪
-                    </button>
+                    <button id=heads-btn>🟡</button>
+                    <button id=tails-btn>⚪</button>
                 </div>
                 <input 
                     type="number" 
                     id="wager-amount" 
                     class="wager-amount-input"
-                    placeholder="₿ 000 000 000"
+                    placeholder="₿ Enter amount"
                     min="100"
                     max="100000000"
                 >
@@ -96,7 +88,7 @@
                             id="send-message-btn"
                             class="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded transition"
                         >
-                            <img src="public/images/send.svg" alt="Send" style="filter: brightness(0);" class="w-4 h-4">
+                            <img src="images/send.svg" alt="Send" style="filter: brightness(0);" class="w-4 h-4">
                         </button>
                     </div>
                     <div class="flex items-center gap-2 mt-2">

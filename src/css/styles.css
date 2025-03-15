@@ -65,9 +65,7 @@ body, html {
   align-items: center;
 }
 
-.create-wager {
-  color: rgba(255, 255, 255, 0.147);
-}
+
 
 /* Bitcoin logo styling */
 #btc-logo, 
@@ -223,6 +221,7 @@ body, html {
   align-items: center;  
   gap: 10px;
   margin-bottom: 15px;
+  background-color: transparent;
 }
 
 
@@ -233,6 +232,7 @@ body, html {
   border-radius: 5px;
   cursor: pointer;
   flex: 1;
+  background-color: #1D1D1D;
 }
 
 #tails-btn {
@@ -242,6 +242,7 @@ body, html {
   border-radius: 5px;
   cursor: pointer;
   flex: 1;
+  background-color: #1D1D1D; 
 }
 
 /* Chat section */
@@ -279,10 +280,11 @@ body, html {
   aspect-ratio: 1;
 }
 
+
+
 .game-card:hover {
   border-color: #ff6b6b;
 }
-
 
 /* Responsive grid adjustments */
 @media (max-width: 1536px) {
