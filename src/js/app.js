@@ -696,8 +696,31 @@ try {
                 
                 if (headsBtn && tailsBtn) {
                     const updateTeamButtons = () => {
-                        headsBtn.style.backgroundColor = selectedTeam === 'heads' ? '#62ff51' : '#1D1D1D';
-                        tailsBtn.style.backgroundColor = selectedTeam === 'tails' ? '#62ff51' : '#1D1D1D';
+                        // Apply pulsating effect to the selected button
+                        if (selectedTeam === 'heads') {
+                            headsBtn.style.backgroundColor = '#363636';
+                            headsBtn.style.animation = 'pulse 0.5s infinite alternate';
+                            tailsBtn.style.backgroundColor = '#1D1D1D';
+                            tailsBtn.style.animation = 'none';
+                        } else {
+                            tailsBtn.style.backgroundColor = '#363636';
+                            tailsBtn.style.animation = 'pulse 0.5s infinite alternate';
+                            headsBtn.style.backgroundColor = '#1D1D1D';
+                            headsBtn.style.animation = 'none';
+                        }
+                        
+                        // Add the keyframe animation if it doesn't exist
+                        if (!document.getElementById('pulse-animation')) {
+                            const style = document.createElement('style');
+                            style.id = 'pulse-animation';
+                            style.textContent = `
+                                @keyframes pulse {
+                                    from { background-color: #363636; }
+                                    to { background-color: #666666; }
+                                }
+                            `;
+                            document.head.appendChild(style);
+                        }
                     };
                     
                     headsBtn.addEventListener('click', () => {
