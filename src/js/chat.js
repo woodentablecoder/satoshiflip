@@ -1,6 +1,6 @@
 import { supabase } from './supabase.js';
 import { getCurrentUser, getUserBalance } from './supabase.js';
-import { showToast } from './app.js';
+import { showToast } from './utils.js';
 
 class Chat {
     constructor() {
@@ -10,9 +10,14 @@ class Chat {
         this.sendButton = document.getElementById('send-message-btn');
         this.tipButton = document.getElementById('tip-btn');
         this.tipAmount = document.getElementById('tip-amount');
+        this.selectedUserId = null;
+        this.selectedUsername = null;
         
         this.setupEventListeners();
         this.setupRealtimeSubscription();
+        
+        // Load recent messages when chat is initialized
+        this.loadRecentMessages();
     }
     
     setupEventListeners() {
@@ -56,13 +61,13 @@ class Chat {
         }
         
         try {
+            // Use the basic insert without timestamp field (it will use the default created_at)
             const { data, error } = await supabase
                 .from('chat_messages')
                 .insert([{
                     user_id: currentUser.id,
                     username: currentUser.user_metadata.display_name || currentUser.email,
-                    message: messageText,
-                    timestamp: new Date().toISOString()
+                    message: messageText
                 }]);
                 
             if (error) throw error;
@@ -77,6 +82,11 @@ class Chat {
     }
     
     async sendTip() {
+        if (!this.selectedUserId || !this.selectedUsername) {
+            showToast('Please select a user to tip by clicking their name', 'error');
+            return;
+        }
+        
         const amount = parseInt(this.tipAmount.value);
         if (!amount || amount < 100) {
             showToast('Minimum tip amount is 100 satoshis', 'error');
@@ -86,6 +96,12 @@ class Chat {
         const currentUser = await getCurrentUser();
         if (!currentUser) {
             showToast('Please log in to tip', 'error');
+            return;
+        }
+        
+        // Don't allow tipping yourself
+        if (currentUser.id === this.selectedUserId) {
+            showToast('You cannot tip yourself', 'error');
             return;
         }
         
@@ -112,22 +128,24 @@ class Chat {
             
             if (addError) throw addError;
             
-            // Send tip message
-            const { error: messageError } = await supabase
+            // Send tip message as a regular message
+            const tipMessage = `Tipped ${this.selectedUsername} ${amount} satoshis! 🎉`;
+            
+            // Use the basic insert without timestamp field
+            const { data, error } = await supabase
                 .from('chat_messages')
                 .insert([{
                     user_id: currentUser.id,
                     username: currentUser.user_metadata.display_name || currentUser.email,
-                    message: `Tipped ${amount} satoshis! 🎉`,
-                    timestamp: new Date().toISOString(),
-                    is_tip: true,
-                    tip_amount: amount
+                    message: tipMessage
                 }]);
                 
-            if (messageError) throw messageError;
+            if (error) throw error;
             
-            // Clear tip amount
+            // Clear tip amount and selected user
             this.tipAmount.value = '';
+            this.selectedUserId = null;
+            this.selectedUsername = null;
             showToast('Tip sent successfully!', 'success');
             
         } catch (error) {
@@ -138,11 +156,15 @@ class Chat {
     
     addMessageToUI(message) {
         const messageElement = document.createElement('div');
-        messageElement.className = 'message bg-[#161616] rounded p-3';
+        messageElement.className = 'message bg-[#161616] rounded p-3 mb-2';
         
-        const timestamp = new Date(message.timestamp).toLocaleTimeString();
+        // Use created_at instead of timestamp
+        const timestamp = new Date(message.created_at).toLocaleTimeString();
         
-        if (message.is_tip) {
+        // Check if this is a tip message by looking for the message text
+        const isTipMessage = message.message && message.message.includes('Tipped') && message.message.includes('satoshis');
+        
+        if (isTipMessage) {
             messageElement.innerHTML = `
                 <div class="flex items-center gap-2">
                     <span class="text-yellow-500 font-mono">${message.username}</span>
@@ -153,20 +175,42 @@ class Chat {
         } else {
             messageElement.innerHTML = `
                 <div class="flex items-center gap-2">
-                    <span class="text-yellow-500 font-mono">${message.username}</span>
+                    <span class="text-yellow-500 font-mono flex items-center">
+                        ${message.username}
+                        <button class="tip-user-btn ml-1" data-user-id="${message.user_id}" data-username="${message.username}">
+                            <span class="text-[#F7931A] hover:text-yellow-300 transition-colors">₿</span>
+                        </button>
+                    </span>
                     <span class="text-gray-400 text-sm">${timestamp}</span>
                 </div>
                 <div class="mt-1 text-white">${message.message}</div>
             `;
+            
+            // Add click handler for the BTC icon to enable tipping
+            const tipBtn = messageElement.querySelector('.tip-user-btn');
+            if (tipBtn) {
+                tipBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent triggering the username click
+                    this.selectedUserId = tipBtn.dataset.userId;
+                    this.selectedUsername = tipBtn.dataset.username;
+                    this.tipAmount.focus();
+                    showToast(`Ready to tip ${this.selectedUsername}`, 'info');
+                });
+            }
         }
         
-        // Add click handler for username to enable tipping
+        // Add click handler for username to enable tipping (as a fallback)
         const usernameElement = messageElement.querySelector('.text-yellow-500');
         usernameElement.style.cursor = 'pointer';
         usernameElement.addEventListener('click', () => {
-            this.selectedUserId = message.user_id;
-            this.tipAmount.focus();
-            showToast(`Ready to tip ${message.username}`, 'info');
+            const userId = messageElement.querySelector('.tip-user-btn')?.dataset.userId;
+            const username = messageElement.querySelector('.tip-user-btn')?.dataset.username;
+            if (userId && username) {
+                this.selectedUserId = userId;
+                this.selectedUsername = username;
+                this.tipAmount.focus();
+                showToast(`Ready to tip ${username}`, 'info');
+            }
         });
         
         this.messageContainer.appendChild(messageElement);
@@ -175,10 +219,11 @@ class Chat {
     
     async loadRecentMessages() {
         try {
+            // Use direct query instead of the helper function
             const { data, error } = await supabase
                 .from('chat_messages')
                 .select('*')
-                .order('timestamp', { ascending: false })
+                .order('created_at', { ascending: false })
                 .limit(50);
                 
             if (error) throw error;
@@ -197,4 +242,10 @@ class Chat {
 }
 
 // Export a singleton instance
-export const chat = new Chat(); 
+export const chat = new Chat();
+
+// Initialize chat when the DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // The chat singleton is already initialized when imported
+    console.log('Chat module initialized');
+}); 

@@ -3,7 +3,7 @@
  * Handles user sign-up, login, and session management
  */
 
-import { signUp, signIn, signOut, getCurrentUser } from './supabase.js';
+import { signUp, signIn, signOut, getCurrentUser, supabase } from './supabase.js';
 
 // DOM elements for auth forms
 let authModal;
@@ -84,7 +84,6 @@ export function initAuth() {
         saveButton.disabled = true;
         saveButton.textContent = 'Saving...';
         
-        const supabase = (await import('./supabase.js')).default;
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
         if (userError || !user) throw new Error('No user logged in');
@@ -207,7 +206,6 @@ async function handleSignup(e) {
     }
 
     // Get the user data
-    const supabase = (await import('./supabase.js')).default;
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (user) {
@@ -276,7 +274,6 @@ async function handleLogin(e) {
     }
 
     // Get the user data
-    const supabase = (await import('./supabase.js')).default;
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user) {
@@ -365,9 +362,6 @@ async function checkAuthState() {
     document.getElementById('user-email').textContent = user.email;
     
     // Get user data from the database
-    const supabase = (await import('./supabase.js')).default;
-    
-    // Check if user exists in the database
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
@@ -451,7 +445,6 @@ async function updateUIForAuthState(isLoggedIn) {
       saveButton.parentNode.replaceChild(newSaveButton, saveButton);
       
       // Load current display name if it exists
-      const supabase = (await import('./supabase.js')).default;
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (user) {
         const { data: userData, error: userDataError } = await supabase
@@ -612,9 +605,7 @@ function auth() {
       // Return a promise-based version that is more reliable
       return new Promise(async (resolve) => {
         try {
-          const { data, error } = await import('./supabase.js').then(
-            module => module.default.auth.getUser()
-          );
+          const { data, error } = await supabase.auth.getUser();
           
           if (error) {
             console.error('Error getting current user:', error);

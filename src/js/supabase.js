@@ -10,7 +10,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 // Replace these with your actual Supabase project credentials
 const SUPABASE_URL = 'https://iyoldnkgdtfomcbgfufq.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5b2xkbmtnZHRmb21jYmdmdWZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE4OTU0NTAsImV4cCI6MjA1NzQ3MTQ1MH0.gZBLUY5IJXWYUZbSVDRHSxNVvFRxxMSHCfoL0lI8Ig0';
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /**
  * Authentication functions
@@ -644,6 +644,79 @@ export async function cleanupOrphanedGames() {
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Chat functions
+ */
+
+// These functions are no longer used, but we'll keep them commented out for reference
+/*
+// Get recent chat messages
+export async function getRecentChatMessages(limit = 50) {
+  try {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .order('timestamp', { ascending: false })
+      .limit(limit);
+      
+    if (error) throw error;
+    return data.reverse(); // Return in chronological order (oldest first)
+  } catch (error) {
+    console.error('Error getting chat messages:', error);
+    return [];
+  }
+}
+
+// Send a chat message
+export async function sendChatMessage(userId, username, message, isTip = false, tipAmount = null, tipRecipientId = null) {
+  try {
+    // Basic message data without is_tip field
+    const messageData = {
+      user_id: userId,
+      username: username,
+      message: message,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Only add tip-related fields if this is a tip message and the fields exist in the database
+    if (isTip && tipAmount && tipRecipientId) {
+      // For tip messages, we'll use a different approach
+      // First check if the table has the required columns
+      try {
+        const { data: tipData, error: tipError } = await supabase
+          .from('chat_messages')
+          .insert([{
+            user_id: userId,
+            username: username,
+            message: message,
+            timestamp: new Date().toISOString(),
+            tip_amount: tipAmount,
+            tip_recipient_id: tipRecipientId
+          }]);
+          
+        if (tipError) throw tipError;
+        return { success: true, data: tipData };
+      } catch (tipError) {
+        console.error('Error sending tip message with tip fields:', tipError);
+        // Fall back to sending a regular message without tip fields
+        console.log('Falling back to regular message for tip');
+      }
+    }
+    
+    // Regular message insert without tip fields
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .insert([messageData]);
+      
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error sending chat message:', error);
+    return { success: false, error: error.message };
+  }
+}
+*/
 
 // Export the supabase instance for direct access if needed
 export default supabase; 
