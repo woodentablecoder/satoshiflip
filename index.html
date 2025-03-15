@@ -124,7 +124,7 @@
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="active-wagers-title">ACTIVE WAGERS</h2>
                     <button id="refresh-games-btn" style="transition: transform 0.2s ease-in-out;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                        <img src="public/images/refresh.svg" style="filter: brightness(0) invert(1);" class="animate-pulse" style="animation: refreshPulse 1s infinite ease-in-out; color: #F7931A">
+                        <img src="public/images/refresh.svg" style="filter: brightness(0) invert(1);" style="animation: refreshPulse 1s infinite ease-in-out; color: #F7931A">
                     </button>
                 </div>
                 
@@ -166,10 +166,10 @@
     </div>
     
     <!-- Coinflip Modal -->
-    <div id="coinflip-modal" class="fixed inset-0 bg-black/80 hidden z-50">
-        <div class="h-full w-full flex items-center justify-center">
+    <div id="coinflip-modal" class="fixed inset-0 bg-black/80 hidden z-50 flex items-center justify-center">
+        <div class="bg-gray-800 p-8 rounded-lg max-w-md w-full">
             <div class="text-center">
-                <div id="coin" class="coin">
+                <div id="coin" class="coin mx-auto">
                     <div class="coin-inner">
                         <div class="side heads">
                             <span>H</span>
@@ -189,7 +189,7 @@
     
     <!-- Auth Modal (Added directly to HTML) -->
     <div id="auth-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50">
-        <div class="bg-gray-800 p-6 rounded-lg w-full max-w-md">
+        <div class="bg-[rgb(22,22,22)] p-6 rounded-lg w-full max-w-md border border-[#ffffff1f]" style="border-width: 2px;">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl text-white font-bold">SatoshiFlip Account</h2>
                 <button id="close-auth-modal" class="text-gray-400 hover:text-white">
@@ -199,7 +199,8 @@
                 </button>
             </div>
             
-            <div id="auth-error" class="text-red-500 mb-4 text-sm"></div>
+            <div id="auth-error" class="text-red-500 mb-4 text-sm text-center">
+            </div>
             
             <!-- Login Form -->
             <div id="login-container">
@@ -252,10 +253,10 @@
                     </label>
                     <div class="flex gap-2">
                         <input type="text" id="display-name-input" 
-                            class="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:shadow-outline"
+                            class="shadow appearance-none border rounded w-full py-2 px-3 bg-[rgb(22,22,22)] text-white leading-tight focus:outline-none focus:shadow-outline"
                             placeholder="Enter display name">
                         <button id="save-display-name" 
-                            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                            class="bg-[rgb(234,179,8)] hover:bg-[rgb(250,179,8)] text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
                             Save
                         </button>
                     </div>

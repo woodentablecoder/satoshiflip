@@ -576,9 +576,9 @@ try {
                 resultElement.textContent = 'Flipping...';
                 resultElement.className = 'text-center mt-4 text-white text-2xl mb-8';
                 
-                // Show the modal - fix display conflicts
-                modal.style.display = 'flex';
+                // Show the modal
                 modal.classList.remove('hidden');
+                modal.style.display = 'flex';
                 
                 // Force reflow
                 void modal.offsetHeight;

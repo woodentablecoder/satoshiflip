@@ -72,9 +72,10 @@ export function initAuth() {
       const newDisplayName = displayNameInput.value.trim();
       
       if (!newDisplayName) {
-        authError.textContent = 'Display name cannot be empty';
-        authError.classList.add('text-red-500');
-        authError.classList.remove('text-green-500');
+        const authErrorElement = document.getElementById('auth-error');
+        authErrorElement.textContent = 'Display name cannot be empty';
+        authErrorElement.classList.add('text-red-500');
+        authErrorElement.classList.remove('text-green-500');
         return;
       }
       
@@ -90,6 +91,21 @@ export function initAuth() {
         
         console.log('Updating display name for user:', user.id);
         
+        // Get the auth error element directly
+        const authErrorElement = document.getElementById('auth-error');
+        
+        // Check if display name is already taken by another user
+        const { data: existingUser, error: checkError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('display_name', newDisplayName)
+          .neq('id', user.id)
+          .single();
+          
+        if (existingUser) {
+          throw new Error('This display name is already taken. Please choose another one.');
+        }
+        
         const { data, error } = await supabase
           .from('users')
           .update({ display_name: newDisplayName })
@@ -100,9 +116,9 @@ export function initAuth() {
 
         if (error) throw error;
         
-        authError.textContent = 'Display name updated successfully!';
-        authError.classList.remove('text-red-500');
-        authError.classList.add('text-green-500');
+        authErrorElement.textContent = 'Display name updated successfully!';
+        authErrorElement.classList.remove('text-red-500');
+        authErrorElement.classList.add('text-green-500');
         
         // Update any UI elements that show the display name
         const userDisplayElements = document.querySelectorAll('.user-display-name');
@@ -110,9 +126,38 @@ export function initAuth() {
         
       } catch (error) {
         console.error('Error updating display name:', error);
-        authError.textContent = 'Failed to update display name: ' + (error.message || 'Unknown error');
-        authError.classList.add('text-red-500');
-        authError.classList.remove('text-green-500');
+        console.log('Error type:', typeof error);
+        console.log('Error stringified:', JSON.stringify(error, null, 2));
+        
+        // Get the auth error element directly
+        const authErrorElement = document.getElementById('auth-error');
+        
+        // Check for unique constraint violation error - handle multiple error formats
+        if (
+            // Check for message string format
+            (error.message && (
+              error.message.includes('duplicate key value violates unique constraint "unique_display_name"') ||
+              error.message.includes('violates unique constraint')
+            )) || 
+            // Check for error code format (409 Conflict)
+            (error.code === '23505') ||
+            // Check for error object with message property
+            (error.error && error.error.message && 
+              error.error.message.includes('unique constraint')) ||
+            // Check for the specific error format we're seeing in the console
+            (error.status === 409) ||
+            // Check for the specific error format with code property
+            (error.code && error.code === 23505) ||
+            // Check for JSON error response
+            (typeof error === 'object' && JSON.stringify(error).includes('duplicate key value'))
+        ) {
+          authErrorElement.textContent = 'Username already taken, please choose another.';
+        } else {
+          authErrorElement.textContent = 'Failed to update display name: ' + (error.message || 'Unknown error');
+        }
+        
+        authErrorElement.classList.add('text-red-500');
+        authErrorElement.classList.remove('text-green-500');
       } finally {
         // Re-enable button and restore text
         saveButton.disabled = false;
@@ -352,7 +397,8 @@ async function checkAuthState() {
             id: user.id,
             email: user.email,
             btc_address: uniqueBtcAddress,
-            balance: 0
+            balance: 0,
+            display_name: null
           });
           
           if (insertError) {
@@ -422,12 +468,12 @@ async function updateUIForAuthState(isLoggedIn) {
       newSaveButton.addEventListener('click', async () => {
         const displayNameInput = document.getElementById('display-name-input');
         const newDisplayName = displayNameInput.value.trim();
-        const authError = document.getElementById('auth-error');
+        const authErrorElement = document.getElementById('auth-error');
         
         if (!newDisplayName) {
-          authError.textContent = 'Display name cannot be empty';
-          authError.classList.add('text-red-500');
-          authError.classList.remove('text-green-500');
+          authErrorElement.textContent = 'Display name cannot be empty';
+          authErrorElement.classList.add('text-red-500');
+          authErrorElement.classList.remove('text-green-500');
           return;
         }
         
@@ -442,6 +488,21 @@ async function updateUIForAuthState(isLoggedIn) {
           
           console.log('Updating display name for user:', user.id);
           
+          // Get the auth error element directly
+          const authErrorElement = document.getElementById('auth-error');
+          
+          // Check if display name is already taken by another user
+          const { data: existingUser, error: checkError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('display_name', newDisplayName)
+            .neq('id', user.id)
+            .single();
+            
+          if (existingUser) {
+            throw new Error('already taken.');
+          }
+          
           const { data, error } = await supabase
             .from('users')
             .update({ display_name: newDisplayName })
@@ -452,19 +513,49 @@ async function updateUIForAuthState(isLoggedIn) {
 
           if (error) throw error;
           
-          authError.textContent = 'Display name updated successfully!';
-          authError.classList.remove('text-red-500');
-          authError.classList.add('text-green-500');
+          authErrorElement.textContent = 'Display name updated successfully!';
+          authErrorElement.classList.remove('text-red-500');
+          authErrorElement.classList.add('text-green-500');
           
           // Update any UI elements that show the display name
           const userDisplayElements = document.querySelectorAll('.user-display-name');
           userDisplayElements.forEach(el => el.textContent = newDisplayName);
           
         } catch (error) {
+          // More detailed error logging
           console.error('Error updating display name:', error);
-          authError.textContent = 'Failed to update display name: ' + (error.message || 'Unknown error');
-          authError.classList.add('text-red-500');
-          authError.classList.remove('text-green-500');
+          console.log('Error type:', typeof error);
+          console.log('Error stringified:', JSON.stringify(error, null, 2));
+          
+          // Get the auth error element directly
+          const authErrorElement = document.getElementById('auth-error');
+          
+          // Check for unique constraint violation error - handle multiple error formats
+          if (
+              // Check for message string format
+              (error.message && (
+                error.message.includes('duplicate key value violates unique constraint "unique_display_name"') ||
+                error.message.includes('violates unique constraint')
+              )) || 
+              // Check for error code format (409 Conflict)
+              (error.code === '23505') ||
+              // Check for error object with message property
+              (error.error && error.error.message && 
+                error.error.message.includes('unique constraint')) ||
+              // Check for the specific error format we're seeing in the console
+              (error.status === 409) ||
+              // Check for the specific error format with code property
+              (error.code && error.code === 23505) ||
+              // Check for JSON error response
+              (typeof error === 'object' && JSON.stringify(error).includes('duplicate key value'))
+          ) {
+            authErrorElement.textContent = 'Username already taken, please choose another.';
+          } else {
+            authErrorElement.textContent = 'Failed to update display name: ' + (error.message || 'Unknown error');
+          }
+          
+          authErrorElement.classList.add('text-red-500');
+          authErrorElement.classList.remove('text-green-500');
         } finally {
           // Re-enable button and restore text
           newSaveButton.disabled = false;

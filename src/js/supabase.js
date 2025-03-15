@@ -49,7 +49,8 @@ export async function signUp(email, password) {
             id: data.user.id,
             email: data.user.email,
             btc_address: uniqueBtcAddress,
-            balance: 0
+            balance: 0,
+            display_name: null
           });
           
           if (insertError) {
@@ -112,7 +113,8 @@ export async function signIn(email, password) {
               id: data.user.id,
               email: data.user.email,
               btc_address: uniqueBtcAddress,
-              balance: 0
+              balance: 0,
+              display_name: null
             });
             
             if (insertError) {
