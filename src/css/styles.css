@@ -274,6 +274,9 @@ body, html {
   background-color: #1d1d1d;
   border: 2px solid #ffffff1f;
   border-radius: 5px;
+  max-height: 85vh;
+  overflow-y: auto;
+  align-content: flex-start;
 }
 
 /* Game card styling */
@@ -299,18 +302,21 @@ body, html {
 @media (max-width: 1536px) {
   #active-wagers-container {
     grid-template-columns: repeat(3, 1fr);
+    max-height: 85vh; /* Increased height for smaller screens */
   }
 }
 
 @media (max-width: 1280px) {
   #active-wagers-container {
     grid-template-columns: repeat(2, 1fr);
+    max-height: 75vh; /* Adjusted height for medium screens */
   }
 }
 
 @media (max-width: 768px) {
   #active-wagers-container {
     grid-template-columns: 1fr;
+    max-height: 65vh; /* Adjusted height for mobile screens */
   }
 }
 

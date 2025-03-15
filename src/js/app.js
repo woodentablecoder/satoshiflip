@@ -83,10 +83,13 @@ try {
                 return;
             }
             
+            // Sort the games by wager amount (highest to lowest)
+            const sortedGames = [...activeGames].sort((a, b) => b.wagerAmount - a.wagerAmount);
+            
             // Get current user to identify their games
             const currentUser = await getCurrentUser();
             
-            activeGames.forEach(game => {
+            sortedGames.forEach(game => {
                 // Skip any null entries that might have sneaked in
                 if (!game) return;
                 
@@ -107,14 +110,14 @@ try {
                         </div>
                         <div class="flex flex-col items-end flex-grow">
                             <div class="text-right">
-                                <span class="text-[rgba(255,255,255,0.8)]">
+                                <span style="font-family: 'GohuFont', monospace; font-size: calc(0.675rem + 5px);">
                                     ${game.teamChoice === 'heads' 
                                         ? `<img src="public/images/bitcoin heads.png" alt="Heads" class="w-5 h-5 inline-block mr-1" style="vertical-align: middle;"> Heads` 
                                         : `<img src="public/images/bitcoin.svg" alt="Tails" class="w-5 h-5 inline-block mr-1" style="vertical-align: middle;"> Tails`}
                                 </span>
                             </div>
                             <div class="flex items-center justify-end mt-9" style="border-radius: 4px; min-width: 80px; min-height: 28px;">
-                                <span style="font-family: 'GohuFont', monospace; font-size: calc(0.875rem + 9px);"><span style="color: #F7931A; margin-right: 3px;">₿</span><span class="text-white">${game.wagerAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")}</span></span>
+                                <span style="font-family: 'GohuFont', monospace; font-size: calc(0.675rem + 5px);"><span style="color: #F7931A; margin-right: 3px;">₿</span><span class="text-white">${game.wagerAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")}</span></span>
                             </div>
                         </div>
                     </div>
