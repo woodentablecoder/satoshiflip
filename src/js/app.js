@@ -651,10 +651,19 @@ try {
                     return;
                 }
                 
-                console.log(`Game successfully cancelled: ${gameId}`);
+                console.log(`Game successfully cancelled: ${gameId}`, result);
                 
-                // Show a success message
-                showToast('Game successfully cancelled! Refreshing list...', 'success');
+                // Update the balance display
+                await updateBalanceDisplay();
+                
+                // Show a success message based on result
+                if (result.partial) {
+                    // Partial success - game cancelled but refund may have failed
+                    showToast(result.message || 'Game cancelled but refund may have failed. Please check your balance.', 'warning');
+                } else {
+                    // Full success
+                    showToast('Game successfully cancelled! Wager refunded to your balance.', 'success');
+                }
                 
                 // Manually update the game list since real-time events may not be reliable for DELETE operations
                 await loadActiveGames();

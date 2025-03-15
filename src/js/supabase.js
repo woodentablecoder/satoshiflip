@@ -514,7 +514,28 @@ export async function cancelGame(userId, gameId) {
     
     console.log('Found game to cancel:', game);
     
+    // Get the wager amount to refund
+    const wagerAmount = game.wager_amount;
+    
+    // Before deleting the game, get current user balance
+    let userData;
+    try {
+      const { data, error: userError } = await supabase
+        .from('users')
+        .select('balance')
+        .eq('id', userId)
+        .single();
+        
+      if (userError) throw userError;
+      userData = data;
+      console.log('Current user balance before refund:', userData.balance);
+    } catch (balanceError) {
+      console.error('Error getting user balance for refund:', balanceError);
+      // Continue with deletion even if balance fetch fails
+    }
+    
     // Try to use RPC function first (if it exists)
+    let gameDeleted = false;
     try {
       const { data: rpcData, error: rpcError } = await supabase.rpc('cancel_game', {
         user_id: userId,
@@ -523,64 +544,138 @@ export async function cancelGame(userId, gameId) {
       
       if (!rpcError) {
         console.log('Game cancelled via RPC:', rpcData);
-        return { success: true };
+        gameDeleted = true;
+      } else {
+        // If RPC fails with function not found, fall back to direct delete
+        console.log('RPC cancel failed, falling back to direct delete:', rpcError);
       }
-      
-      // If RPC fails with function not found, fall back to direct delete
-      console.log('RPC cancel failed, falling back to direct delete:', rpcError);
     } catch (rpcError) {
       console.log('RPC failed with exception, falling back to direct delete:', rpcError);
     }
     
-    // Try with more specific conditions for deletion
-    const { data: deleteData, error: deleteError } = await supabase
-      .from('games')
-      .delete()
-      .match({ 
-        'id': gameId,
-        'player1_id': userId,
-        'status': 'pending'
-      })
-      .select();
-    
-    if (deleteError) {
-      console.error('Error deleting game with match():', deleteError);
-      
-      // Last resort: try with eq chaining
-      const { error: fallbackError } = await supabase
-        .from('games')
-        .delete()
-        .eq('id', gameId)
-        .eq('player1_id', userId)
-        .eq('status', 'pending');
-      
-      if (fallbackError) {
-        console.error('Error deleting game with eq() chain:', fallbackError);
-        throw fallbackError;
+    // If game was not deleted through RPC, try direct deletion
+    if (!gameDeleted) {
+      try {
+        // Try with more specific conditions for deletion
+        const { data: deleteData, error: deleteError } = await supabase
+          .from('games')
+          .delete()
+          .match({ 
+            'id': gameId,
+            'player1_id': userId,
+            'status': 'pending'
+          })
+          .select();
+        
+        if (deleteError) {
+          console.error('Error deleting game with match():', deleteError);
+          
+          // Last resort: try with eq chaining
+          const { error: fallbackError } = await supabase
+            .from('games')
+            .delete()
+            .eq('id', gameId)
+            .eq('player1_id', userId)
+            .eq('status', 'pending');
+          
+          if (fallbackError) {
+            console.error('Error deleting game with eq() chain:', fallbackError);
+            throw fallbackError;
+          }
+        }
+        
+        // Log deletion result
+        console.log('Game deletion result:', deleteData);
+        
+        // Check if we actually deleted the game
+        if (deleteData && deleteData.length > 0) {
+          gameDeleted = true;
+        } else {
+          console.warn('Game not deleted - game ID may no longer exist or conditions not met');
+          return { success: false, error: 'Game could not be deleted' };
+        }
+      } catch (deleteError) {
+        console.error('Error during direct game deletion:', deleteError);
+        return { success: false, error: 'Failed to delete game' };
       }
     }
     
-    // Log deletion result
-    console.log('Game deletion result:', deleteData);
-    
-    // If we have delete data and it's empty, we didn't delete anything
-    if (deleteData && deleteData.length === 0) {
-      console.warn('Game not deleted - game ID may no longer exist or conditions not met');
+    // If game was successfully deleted, perform refund
+    if (gameDeleted && userData) {
+      try {
+        console.log('Refunding wager amount:', wagerAmount);
+        
+        // Calculate new balance
+        const newBalance = userData.balance + wagerAmount;
+        console.log('New balance will be:', newBalance);
+        
+        // Update user balance by adding back the wager amount
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({ balance: newBalance })
+          .eq('id', userId);
+          
+        if (updateError) {
+          console.error('Error updating user balance:', updateError);
+          throw updateError;
+        }
+        
+        console.log('Balance successfully updated to:', newBalance);
+        
+        // Create a transaction record for the refund
+        try {
+          const { error: transactionError } = await supabase
+            .from('transactions')
+            .insert({
+              user_id: userId,
+              amount: wagerAmount,
+              type: 'wager',
+              status: 'completed'
+            });
+            
+          if (transactionError) {
+            console.error('Error creating refund transaction record:', transactionError);
+            // Continue even if transaction record fails
+          } else {
+            console.log('Refund transaction record created successfully');
+          }
+        } catch (transactionError) {
+          console.error('Exception creating transaction record:', transactionError);
+          // Continue even if transaction record fails
+        }
+        
+        // Trigger balance update event
+        window.dispatchEvent(new CustomEvent('balanceChanged'));
+      } catch (refundError) {
+        console.error('Error refunding wager amount:', refundError);
+        // Return partial success - game deleted but refund failed
+        return { 
+          success: true, 
+          partial: true, 
+          message: 'Game cancelled but there was an error refunding your balance. Please contact support.'
+        };
+      }
     }
     
     console.log('Game successfully cancelled:', gameId);
     
-    // Broadcast a special event to all clients to force refresh
-    // This is a fallback in case realtime deletion events are missed
+    // Try to broadcast a special event, but don't fail if it doesn't work
     try {
-      await supabase.from('system_events').insert({
-        event_type: 'game_cancelled',
-        event_data: { game_id: gameId },
-        created_at: new Date().toISOString()
-      });
+      const { error: eventError } = await supabase
+        .from('system_events')
+        .insert({
+          event_type: 'game_cancelled',
+          event_data: { game_id: gameId },
+          created_at: new Date().toISOString()
+        });
+        
+      if (eventError) {
+        console.warn('Failed to broadcast cancellation event:', eventError);
+        // Continue anyway
+      }
     } catch (broadcastError) {
-      // Just log the error but continue, as the main deletion was successful
-      console.warn('Failed to broadcast cancellation event:', broadcastError);
+      console.warn('Exception broadcasting cancellation event:', broadcastError);
+      // Just log the error but continue, as the main operation was successful
     }
     
     // Game was successfully deleted
